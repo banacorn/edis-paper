@@ -6,3 +6,9 @@
 *.out
 *.pdf
 *.synctex.gz
+
+# minted
+_minted*
+
+# Redis
+dump.rdb

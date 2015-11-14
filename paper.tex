@@ -1,0 +1,139 @@
+%
+% LaTeX template for prepartion of submissions to PLDI'16
+%
+% Requires temporary version of sigplanconf style file provided on
+% PLDI'16 web site.
+%
+\documentclass[pldi]{sigplanconf-pldi16}
+% \documentclass[pldi-cameraready]{sigplanconf-pldi16}
+
+%
+% the following standard packages may be helpful, but are not required
+%
+\usepackage{SIunits}            % typset units correctly
+\usepackage{courier}            % standard fixed width font
+\usepackage[scaled]{helvet}     % see www.ctan.org/get/macros/latex/required/psnfss/psnfss2e.pdf
+\usepackage{url}                % format URLs
+\usepackage{listings}           % format code
+\usepackage{enumitem}           % adjust spacing in enums
+\usepackage[colorlinks=true,allcolors=blue,breaklinks,draft=false]{hyperref}   % hyperlinks, including DOIs and URLs in bibliography
+% known bug: http://tex.stackexchange.com/questions/1522/pdfendlink-ended-up-in-different-nesting-level-than-pdfstartlink
+\newcommand{\doi}[1]{doi:~\href{http://dx.doi.org/#1}{\Hurl{#1}}}   % print a hyperlinked DOI
+
+% \usepackage[utf8]{inputenc}
+% \usepackage[english]{babel}
+\usepackage{minted}     % code highlighting
+\usemintedstyle{tango}
+
+\begin{document}
+
+\title{Catching runtime errors of Redis at compile time}
+
+%
+% any author declaration will be ignored  when using 'pldi' option (for double blind review)
+%
+
+\authorinfo{Person 1 \and Person 2}
+{\makebox{A Department} \\
+\makebox{A University}  \\
+\makebox{A Place, AS 12345}}
+{\{person1,person2\}@cs.auniv.edu}
+
+\maketitle
+
+\begin{abstract}
+We often interacts with database systems through dedicated libraries or packages
+implemented in some programming languages. People make mistakes, while some of
+the syntactic and semantic errors can be prevented by the language at compile
+time, or caught by the package at runtime, most semantic errors are just
+being ignored, causing problems at the database system.
+
+In this paper, we demonstrates how to prevent those runtime errors at compile
+time, and allow users to write reliable database queries without runtime overhead,
+by exploiting type-level programming techniques such as parametedzied monad,
+type-level literals and type families in Haskell.
+
+The database system and the package we are targeting
+are \emph{Redis} and \emph{Hedis} respectively, and our implementation is
+available as \emph{Edis} on \emph{Hackage}.
+
+\paragraph{Categories and Subject Descriptors}
+\paragraph{Keywords}
+type-level programming; Haskell; database query language; Redis;
+\end{abstract}
+
+\section{Introduction}
+
+\subsection{Redis}
+
+Redis is an open source, in-memory data structure store, used as
+database, cache and message broker. Each value is associated with a binary-safe
+string key to identify and manipulate with. Redis supports many different
+kind of values, such as strings, hashes, lists and sets.
+
+
+To manipulate these values, Redis comes with a set of atomic operations,
+called \emph{commands}.
+
+For example, if we want to add a bunch of strings to 2 sets, and intersect them,
+we could input the following sequence of commands into Redis's client interactively.
+
+\begin{minted}{text}
+redis> SADD some-set a b c
+(integer) 3
+redis> SADD another-set a b
+(integer) 2
+redis> SINTER some-set another-set
+1) "a"
+2) "b"
+\end{minted}
+
+Keys such as \mintinline{text}{some-set} and \mintinline{text}{another-set}
+are created on site, with the command \mintinline{text}{SADD}, which returns
+the size of set after completed.
+
+\subsection{Hedis}
+Redis can also be used in most programming languages, with 3rd party libraries
+or packages that talk with Redis' TCP protocol. In Haskell, the most popular
+package people are using is \emph{Hedis}.
+
+The previous example in Redis's client would look something like this with Hedis
+in Haskell.
+\begin{minted}{haskell}
+program :: Redis (Either Reply [ByteString])
+program = do
+    sadd "some-set" ["a", "b"]
+    sadd "another-set" ["a", "b", "C"]
+    sinter ["some-set", "another-set"]
+\end{minted}
+
+Function \mintinline{haskell}{sadd} takes a key and a list of values and returns an
+\mintinline{haskell}{Integer},
+wrapped in the context \mintinline{haskell}{Redis (Either Reply Integer)}
+to which encapsulates possible failures.
+
+ to indicate it's size. \mintinline{haskell}{sinter}
+takes a list of keys and returns
+
+
+
+ , both of type
+  \mintinline{haskell}{ByteString}, and returns a \mintinline{haskell}{Integer}
+  to indicate it's size.
+
+  since keys and values are all just binary strings in Redis.
+
+ and \mintinline{haskell}{sinter} now
+
+\begin{minted}{haskell}
+sadd :: ByteString      -- key
+    -> [ByteString]     -- values
+    -> Redis (Either Reply Integer)
+sinter :: [ByteString]  -- keys
+    -> Redis (Either Reply [ByteString])
+\end{minted}
+
+
+
+
+\end{document}
