@@ -95,9 +95,9 @@ the size of set after completed.
 \subsection{Hedis}
 Redis can also be used in most programming languages, with 3rd party libraries
 or packages that talk with Redis' TCP protocol. In Haskell, the most popular
-package people are using is \emph{Hedis}.
+package is \emph{Hedis}.
 
-The previous example in Redis's client would look something like this with Hedis
+The previous example in Redis's client would look something like this with \emph{Hedis}
 in Haskell.
 \begin{minted}{haskell}
 program :: Redis (Either Reply [ByteString])
@@ -107,32 +107,21 @@ program = do
     sinter ["some-set", "another-set"]
 \end{minted}
 
-Function \mintinline{haskell}{sadd} takes a key and a list of values and returns an
-\mintinline{haskell}{Integer},
-wrapped in the context \mintinline{haskell}{Redis (Either Reply Integer)}
-to which encapsulates possible failures.
-
- to indicate it's size. \mintinline{haskell}{sinter}
-takes a list of keys and returns
-
-
-
- , both of type
-  \mintinline{haskell}{ByteString}, and returns a \mintinline{haskell}{Integer}
-  to indicate it's size.
-
-  since keys and values are all just binary strings in Redis.
-
- and \mintinline{haskell}{sinter} now
+Function \mintinline{haskell}{sadd} takes a key and a list of values as arguments
+, and returns an \mintinline{haskell}{Integer}, wrapped in
+\mintinline{haskell}{Either} to indicate possible failures in
+the context \mintinline{haskell}{Redis} of command execution.
 
 \begin{minted}{haskell}
 sadd :: ByteString      -- key
     -> [ByteString]     -- values
     -> Redis (Either Reply Integer)
-sinter :: [ByteString]  -- keys
-    -> Redis (Either Reply [ByteString])
 \end{minted}
 
+Keys and values are of type \mintinline{haskell}{ByteString}, since they are all
+just binary strings in Redis. That means if a user wants to store values of
+arbitrary types, he or she will have to encode and decode them as
+ \mintinline{haskell}{ByteString}s.
 
 
 
