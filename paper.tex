@@ -42,16 +42,16 @@
 \maketitle
 
 \begin{abstract}
-We often interacts with database systems through dedicated libraries or packages
-implemented in some programming languages. People make mistakes, while some of
-the syntactic and semantic errors can be prevented by the language at compile
-time, or caught by the package at runtime, most semantic errors are just
-being ignored, causing problems at the database system.
+Programmers often interact with database systems, by sending queries through
+libraries or packages in some programming languages. But people make mistakes,
+while some of the syntactic and semantic errors can be prevented by the language
+at compile time, or caught by the package at runtime, most semantic errors are
+just being ignored, causing problems at the database system.
 
 In this paper, we demonstrates how to prevent those runtime errors at compile
-time, and allow users to write reliable database queries without runtime overhead,
-by exploiting type-level programming techniques such as parametedzied monad,
-type-level literals and type families in Haskell.
+time, allowing users to write reliable database queries without runtime
+overhead, by exploiting type-level programming techniques such as parametedzied
+monad, type-level literals and type families in Haskell.
 
 The database system and the package we are targeting
 are \emph{Redis} and \emph{Hedis} respectively, and our implementation is
@@ -71,12 +71,12 @@ database, cache and message broker. Each value is associated with a binary-safe
 string key to identify and manipulate with. Redis supports many different
 kind of values, such as strings, hashes, lists and sets.
 
-
 To manipulate these values, Redis comes with a set of atomic operations,
 called \emph{commands}.
 
 For example, if we want to add a bunch of strings to 2 sets, and intersect them,
-we could input the following sequence of commands into Redis's client interactively.
+we could input the following sequence of commands into Redis's client
+interactively.
 
 \begin{minted}{text}
 redis> SADD some-set a b c
@@ -97,20 +97,20 @@ Redis can also be used in most programming languages, with 3rd party libraries
 or packages that talk with Redis' TCP protocol. In Haskell, the most popular
 package is \emph{Hedis}.
 
-The previous example in Redis's client would look something like this with \emph{Hedis}
-in Haskell.
+The previous example in Redis's client would look something like this with
+\emph{Hedis} in Haskell.
 \begin{minted}{haskell}
 program :: Redis (Either Reply [ByteString])
 program = do
     sadd "some-set" ["a", "b"]
-    sadd "another-set" ["a", "b", "C"]
+    sadd "another-set" ["a", "b", "c"]
     sinter ["some-set", "another-set"]
 \end{minted}
 
-Function \mintinline{haskell}{sadd} takes a key and a list of values as arguments
-, and returns an \mintinline{haskell}{Integer}, wrapped in
-\mintinline{haskell}{Either} to indicate possible failures in
-the context \mintinline{haskell}{Redis} of command execution.
+Function \mintinline{haskell}{sadd} takes a key and a list of values as
+arguments, and returns an \mintinline{haskell}{Integer}, wrapped in
+\mintinline{haskell}{Either} to indicate possible failures in the context
+\mintinline{haskell}{Redis} of command execution.
 
 \begin{minted}{haskell}
 sadd :: ByteString      -- key
@@ -119,10 +119,109 @@ sadd :: ByteString      -- key
 \end{minted}
 
 Keys and values are of type \mintinline{haskell}{ByteString}, since they are all
-just binary strings in Redis. That means if a user wants to store values of
+just binary strings in Redis. If a user wants to store values of
 arbitrary types, he or she will have to encode and decode them as
  \mintinline{haskell}{ByteString}s.
 
+\subsection{Semantics errors}
+
+Although everything in Redis is binary string, they are treated diffenrently.
+Redis supports many different kind of data structures, such as strings, hashes,
+ lists, etc. These values are of different data types, and some commands only
+ work on certain type of values.
+
+\paragraph{Problem 1} Consider the following example. \mintinline{text}{SET} is a command that only
+works on strings. The key \mintinline{text}{some-string} is now related with a
+string. If we treat it as a set and add an element to it with
+\mintinline{text}{SADD}, a runtime error arises.
+
+\begin{minted}{text}
+redis> SET some-string foo
+OK
+redis> SADD some-string bar
+(error) WRONGTYPE Operation against a key
+ holding the wrong kind of value
+\end{minted}
+
+\paragraph{Problem 2} Even worse, not all strings are equal! \mintinline{text}{INCR} parses the
+string value as an integer, increments it by one, and store it back as a string.
+If a string value can't be parse as an integer, another runtime error arises
+
+\begin{minted}{text}
+redis> SET some-string foo
+OK
+redis> INCR some-string
+(error) ERR value is not an integer or out
+ of range
+\end{minted}
+
+\paragraph{In Hedis} The same goes for Hedis, since it's only a simple wrapping on top of Redis's
+protocol written in Haskell. No semantic checking is done, neither
+dynamically nor statically.
+
+\begin{minted}{haskell}
+program :: Redis (Either Reply Integer)
+program = do
+    set "some-string" "foo"
+    sadd "some-string" ["a"]
+\end{minted}
+
+Which yields the same error as in Redis's client.
+
+\begin{minted}{haskell}
+Left (Error "WRONGTYPE Operation against a
+ key holding the wrong kind of value")
+\end{minted}
+
+\subsection{Hedis as an embedded DSL}
+
+Haskell makes it easy to build and use Domain Specific Languages (DSLs).
+Hedis can be regardred as one DSL that embeds in Haskell, that has variable
+bindings (between keys and values), but with very little or none semantic
+checkings.
+
+We started out from making Hedis a dynamically checked embedded DSL, with a
+runtime type checker that keeps track of everything. But then we found that,
+things can be a lot easier, by laveraging the host language's type checker,
+and make it statically checked!
+
+\subsection{Contributions}
+
+To summerize our contributions:
+
+\begin{itemize}[noitemsep]
+\item We model variable bindings of an embedded DSL with language extensions
+like type-level literals and data kinds.
+\item We provide (yet another) an example of how to encode effects and
+constraints of an action in types, with indexed monad and other language
+ extensions such as closed type-families and constraints kinds.
+\item Edis, a package we built for programmers. This package helps programmers
+to write more reliable Redis codes, and makes Redis polymorphic by converting
+back and forth from values of any types and boring ByteStrings.
+\end{itemize}
+
+\section{Implementation}
+\subsection{Model bindings with Type-level Dictionaries}
+\paragraph{Type-level literals}
+\subsection{Bookkeeping with Type families}
+\subsection{Capture effects with Parameterised Monad}
+\paragraph{Type-level literals}
+
+
+%
+% Values have types, but keys don't. In other words, if we treat keys like
+% variables, then Redis behaves likes a dynamically and strongly typed language.
+
+
+% We can only reuse this key as a \emph{set} after it is removed with \mintinline{text}{DEL}
+% explicitly.
+%
+% \begin{minted}{text}
+% redis> DEL some-string
+% (integer) 1
+% redis> SADD some-string bar
+% (integer) 1
+% \end{minted}
 
 
 \end{document}
