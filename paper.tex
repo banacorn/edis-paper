@@ -148,8 +148,8 @@ arbitrary types, he or she will have to encode and decode them as
 
 Although everything in Redis is essentially a binary string, they are treated
 differently. Redis supports many different kind of data structures, such as
-strings, hashes, lists, etc. These values are of different data types, and some
-commands only work on certain types of them, much like how language C treats
+strings, hashes, lists, etc. These values have different datatypes, and most
+commands only work with certain types of them, much like how C language treats
 a piece of data.
 
 \paragraph{Problem 1} Consider the following example. \mintinline{text}{SET} is
@@ -229,13 +229,13 @@ language extensions like type-level literals and data kinds.
  ByteStrings.
 \end{itemize}
 
-\section{Type-level Dictionary}
+\section{Type-level dictionaries}
 
 To check the bindings between keys and values, we need a \emph{dictionary-like}
 structure, and encode it as a \emph{type} somehow.
 
 \subsection{Datatype promotion}
-Normally, at the term level, we could express data type of the dictionary with
+Normally, at the term level, we could express the datatype of dictionary with
 \emph{type synonym} like this.\footnotemark
 
 \begin{minted}[xleftmargin=1em]{haskell}
@@ -318,7 +318,7 @@ such as \mintinline{haskell}{Int}, \mintinline{haskell}{Char} or even a symbol
 \mintinline{haskell}{"symbol"}, while \mintinline{haskell}{Symbol} stands only
 for all symbols.
 
-\section{Indexed Monad}
+\section{Indexed monads}
 
 Redis commands are \emph{actions}.
 We could capture the effects caused by an action, by expressing the states it
@@ -358,7 +358,7 @@ instance IMonad Edis where
 The first and second argument of type \mintinline{haskell}{Edis} is where the
 dictionaries going to stay.
 
-\subsection{The first attempt}
+\subsection{\mintinline{text}{PING}: the first attempt}
 
 In Redis, \mintinline{text}{PING} does nothing but replies with
 \mintinline{text}{PONG} if the connection is alive. In Hedis,
@@ -384,7 +384,7 @@ action, because \mintinline{haskell}{ping} does not affect any key-value
 bindings. To encode other commands that alters key-value bindings, we need
  type-level functions to annotate those effects on the dictionary.
 
-\section{Bookkeeping with type families}
+\section{Type-level functions}
 \subsection{Closed type families}
 
 Type families have a wide variaty of applications. They can appear inside type
@@ -496,61 +496,101 @@ type family Member
     Member (’(t, x) ’: xs) s = Member xs s
 \end{minted}
 
+\subsection{Proxies and singleton types}
+
+With functions on dictionaries, now we could annotate the effects of a command
+in types. \mintinline{text}{DEL} removes a key from the current database,
+regardless of its type.
 
 \begin{minted}[xleftmargin=1em]{haskell}
-type family Get
-    (xs :: [(Symbol, *)])   -- dictionary
-    (s :: Symbol)           -- key
-    :: Maybe * where        -- type
-
-    Get ’[]             s = Nothing
-    Get (’(s, x) ’: xs) s = Just x
-    Get (’(t, x) ’: xs) s = Get xs s
+del :: KnownSymbol s
+    => Proxy s
+    -> Edis xs (Del xs s) (Either Reply Integer)
+del key = Edis $ Hedis.del (symbolVal key)
 \end{minted}
 
+\mintinline{haskell}{KnownSymbol} is a class that gives the string associated
+with a concrete type-level symbol, which can be retreived with
+\mintinline{haskell}{symbolVal}.\footnotemark
 
-% \begin{minted}[xleftmargin=1em]{haskell}
-% Get '['("ha", Int)]
-% \end{minted}
+\footnotetext{They are defined in \mintinline{haskell}{GHC.TypeLits}.}
 
+Since Haskell has a \emph{phase distinction}\cite{phasedistinction}, types are
+erased before runtime. It's impossible to obtain informations directly from
+types, we can only do this indirectly, with \emph{singleton types}
+\cite{singletons}.
 
+A singleton type is a type that has only one instance, and the instance can be
+think of as the representative of the type at the realm of runtime values.
 
-%  are
-% permitted as well.
-%
-%
-%  open type synonym families, and
-% closed type synonym families
-% One of which is to compute types, we are using closed type families, since all
-% we want is to use it as a function on the type level, no extensibility needed,
-% everything is defined in one-piece
-
-
-%
-% \mintinline{haskell}{IMonad} \mintinline{haskell}{IMonad} takes three arguments: an intitial state \mintinline{haskell}{p}, a final
-%  state, and computes a value of type a
-
-
-
-\subsection{Proxies and Kind polymorphism}
-
-% Since Haskell has a phase distinction\cite{phasedistinction} between
-%
-% To link a symbol with a term-level value
-%
-% What we need is a \emph{singleton}\cite{singletons}, a type
-% that has only one instance at the term level.
-
-% With \emph{kind polymorphism}\cite{promotion}, we have parametric polymorphism
-% at the kind level.
+\mintinline{haskell}{Proxy}, as its name would suggest, can be used as
+singletons. It's a phantom type that could be indexed with any type.
 
 \begin{minted}[xleftmargin=1em]{haskell}
-Proxy :: Proxy "a"
+data Proxy t = Proxy
 \end{minted}
 
-\subsection{Closed type families}
+In the type of \mintinline{haskell}{del}, the type varabile
+\mintinline{haskell}{s} would be a \mintinline{haskell}{Symbol} that is decided
+ by the argument of type \mintinline{haskell}{Proxy s}.
+To use \mintinline{haskell}{del}, we would have to apply it with a clunky
+ term-level proxy like this:
 
-\subsection{Conclusions and Related Work}
+\begin{minted}[xleftmargin=1em]{haskell}
+del (Proxy :: Proxy "A")
+\end{minted}
+
+\section{Making Redis polymorphic}
+
+So far, the datatypes we are dealing with, are all of those built-in Redis data
+structures, such as \emph{strings}, \emph{lists (of strings)},
+\emph{sets (of strings)}, etc.
+But in the real world, these raw strings are hardly useful, people would
+usually serialize their data into strings before storing them, and deserialize
+them back when in need.
+
+Instead of letting users writing these boilerplates, we will be doing these
+serializations/deserializations for them. With the help from
+\mintinline{text}{cereal}, a binary serialization library.
+
+\mintinline{text}{cereal} comes with these two functions:
+\begin{minted}[xleftmargin=1em]{haskell}
+encode :: Serialize a
+       => a -> ByteString Source
+
+decode :: Serialize a
+       => ByteString -> Either String a
+\end{minted}
+
+Which would do all the works for us, as long as the datatype it's handling is
+an instance of class \mintinline{haskell}{Serialize}.\footnotemark
+
+\footnotetext{The methods of \mintinline{haskell}{Serialize} will have default
+generic implementations for all datatypes with some language extenstions
+enabled}
+
+\section{Imposing constraints}
+
+To rule out programs with undesired properties, certain constraints must be
+imposed, on what arguments they can take, and what preconditions they must hold.
+These constraints are best encoded in types.
+
+\subsection{Redis datatypes}
+
+Redis supports many different datatypes, and most commands only work with
+certain types of them. For example: \mintinline{haskell}{SET} with strings or
+\mintinline{haskell}{SADD} with sets.
+
+
+
+In Edis we implemented five of them.
+
+
+
+\subsection{Imposing constraints}
+
+
+\section{Conclusions and Related Work}
 
 
 % references
