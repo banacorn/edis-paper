@@ -383,10 +383,29 @@ bindings. To encode other commands that alters key-value bindings, we need
 
 Type families have a wide variaty of applications. They can appear inside type
 classes\cite{tfclass}\cite{tfsynonym}, or at toplevel. Toplevel type families
-can be used to compute over types, they come in open\cite{tfopen} or closed
-forms\cite{tfclosed}. We are using \emph{closed type families} since we need
-none of the extensibility provided by open type families, and we may need to
-overlap instances, like what we do in defining function cases.
+can be used to compute over types, they come in two forms: open\cite{tfopen} and
+closed \cite{tfclosed}.
+
+We choose \emph{closed type families}, because it allows overlapping instances,
+and we need none of the extensibility provided by open type families.
+For example, consider both term-level and type-level \mintinline{haskell}{&&}:
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+(&&) :: Bool -> Bool -> Bool
+True && True = True
+a    && b    = False
+
+type family And (a :: Bool) (b :: Bool) :: Bool where
+    And True True = True
+    And a    b    = False
+\end{minted}
+
+The first instance of \mintinline{haskell}{And} could be subsumed
+under the more general instance \mintinline{haskell}{And a b}.
+But the closedness allows these instances to be resoluted in order, just like
+how cases are resoluted in term-level functions. Also notice that how much
+\mintinline{haskell}{And} resembles to it's term-level brother.
+
 
 %  are
 % permitted as well.
@@ -409,15 +428,15 @@ overlap instances, like what we do in defining function cases.
 
 \subsection{Proxies and Kind polymorphism}
 
-Since Haskell has a phase distinction\cite{phasedistinction} between
+% Since Haskell has a phase distinction\cite{phasedistinction} between
+%
+% To link a symbol with a term-level value
+%
+% What we need is a \emph{singleton}\cite{singletons}, a type
+% that has only one instance at the term level.
 
-To link a symbol with a term-level value
-
-What we need is a \emph{singleton}\cite{singletons}, a type
-that has only one instance at the term level.
-
-With \emph{kind polymorphism}\cite{promotion}, we have parametric polymorphism
-at the kind level.
+% With \emph{kind polymorphism}\cite{promotion}, we have parametric polymorphism
+% at the kind level.
 
 \begin{minted}[xleftmargin=1em]{haskell}
 Proxy :: Proxy "a"
@@ -431,27 +450,5 @@ Proxy :: Proxy "a"
 % references
 \bibliographystyle{abbrvnat}
 \bibliography{cites}
-
-% \subsection{Model bindings with Type-level Dictionaries}
-% \subsection{Bookkeeping with Type families}
-% \subsection{Capture effects with Index Monad}
-% \paragraph{Type-level literals}
-
-
-%
-% Values have types, but keys don't. In other words, if we treat keys like
-% variables, then Redis behaves likes a dynamically and strongly typed language.
-
-
-% We can only reuse this key as a \emph{set} after it is removed with \mintinline{text}{DEL}
-% explicitly.
-%
-% \begin{minted}{text}
-% redis> DEL some-string
-% (integer) 1
-% redis> SADD some-string bar
-% (integer) 1
-% \end{minted}
-
 
 \end{document}
