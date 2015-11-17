@@ -1,5 +1,5 @@
 %
-% LaTeX template for prepartion of submissions to PLDI'16
+% LaTeX template for preparation of submissions to PLDI'16
 %
 % Requires temporary version of sigplanconf style file provided on
 % PLDI'16 web site.
@@ -20,14 +20,31 @@
 % known bug: http://tex.stackexchange.com/questions/1522/pdfendlink-ended-up-in-different-nesting-level-than-pdfstartlink
 \newcommand{\doi}[1]{doi:~\href{http://dx.doi.org/#1}{\Hurl{#1}}}   % print a hyperlinked DOI
 
-% \usepackage[utf8]{inputenc}
-% \usepackage[english]{babel}
-\usepackage{minted}     % code highlighting
+% code highlighting
+\usepackage{minted}
 \usemintedstyle{tango}
+
+% no red boxes on parser error:
+\AtBeginEnvironment{minted}{%
+  \renewcommand{\fcolorbox}[4][]{#4}}
+
+
+% quotes
+\usepackage{dirtytalk}
+
+% for symbols
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{upquote}
+
+% use arbitrary fonts
+\usepackage{fontspec}
+\setmonofont{Inconsolata}
+
 
 \begin{document}
 
-\title{Catching runtime errors of Redis at compile time}
+\title{Preventing runtime errors of Redis at compile time}
 
 %
 % any author declaration will be ignored  when using 'pldi' option (for double blind review)
@@ -49,9 +66,9 @@ at compile time, or caught by the package at runtime, most semantic errors are
 just being ignored, causing problems at the database system.
 
 In this paper, we demonstrates how to prevent those runtime errors at compile
-time, allowing users to write reliable database queries without runtime
-overhead, by exploiting type-level programming techniques such as parametedzied
-monad, type-level literals and type families in Haskell.
+time, allowing users to write more reliable database queries without runtime
+overhead, by exploiting type-level programming techniques such as indexed
+monad, type-level literals and closed type families in Haskell.
 
 The database system and the package we are targeting
 are \emph{Redis} and \emph{Hedis} respectively, and our implementation is
@@ -78,7 +95,7 @@ For example, if we want to add a bunch of strings to 2 sets, and intersect them,
 we could input the following sequence of commands into Redis's client
 interactively.
 
-\begin{minted}{text}
+\begin{minted}[xleftmargin=1em]{text}
 redis> SADD some-set a b c
 (integer) 3
 redis> SADD another-set a b
@@ -95,11 +112,11 @@ the size of set after completed.
 \subsection{Hedis}
 Redis can also be used in most programming languages, with 3rd party libraries
 or packages that talk with Redis' TCP protocol. In Haskell, the most popular
-package is \emph{Hedis}.
+package is Hedis.
 
 The previous example in Redis's client would look something like this with
-\emph{Hedis} in Haskell.
-\begin{minted}{haskell}
+Hedis in Haskell.
+\begin{minted}[xleftmargin=1em]{haskell}
 program :: Redis (Either Reply [ByteString])
 program = do
     sadd "some-set" ["a", "b"]
@@ -110,9 +127,9 @@ program = do
 Function \mintinline{haskell}{sadd} takes a key and a list of values as
 arguments, and returns an \mintinline{haskell}{Integer}, wrapped in
 \mintinline{haskell}{Either} to indicate possible failures in the context
-\mintinline{haskell}{Redis} of command execution.
+\mintinline{haskell}{Redis}\footnotemark of command execution.
 
-\begin{minted}{haskell}
+\begin{minted}[xleftmargin=1em]{haskell}
 sadd :: ByteString      -- key
     -> [ByteString]     -- values
     -> Redis (Either Reply Integer)
@@ -123,19 +140,24 @@ just binary strings in Redis. If a user wants to store values of
 arbitrary types, he or she will have to encode and decode them as
  \mintinline{haskell}{ByteString}s.
 
-\subsection{Semantics errors}
+\footnotetext{Hedis provides another kind of context, \mintinline{haskell}{RedisTx}, for \emph{transactions}, united with \mintinline{haskell}{Redis} under the class of \mintinline{haskell}{RedisCtx}. We use \mintinline{haskell}{Redis} only here for brevity. }
 
-Although everything in Redis is binary string, they are treated diffenrently.
-Redis supports many different kind of data structures, such as strings, hashes,
- lists, etc. These values are of different data types, and some commands only
- work on certain type of values.
+\subsection{Problems}
 
-\paragraph{Problem 1} Consider the following example. \mintinline{text}{SET} is a command that only
-works on strings. The key \mintinline{text}{some-string} is now related with a
-string. If we treat it as a set and add an element to it with
+\say{All binary strings are equal, but some binary strings are more equal than others.}
+
+Although everything in Redis is essentially a binary string, they are treated
+differently. Redis supports many different kind of data structures, such as
+strings, hashes, lists, etc. These values are of different data types, and some
+commands only work on certain types of them, much like how language C treats
+a piece of data.
+
+\paragraph{Problem 1} Consider the following example. \mintinline{text}{SET} is
+a command that only works on strings. The key \mintinline{text}{some-string} is
+now related with a string. If we treat it as a set and add an element to it with
 \mintinline{text}{SADD}, a runtime error arises.
 
-\begin{minted}{text}
+\begin{minted}[xleftmargin=1em]{text}
 redis> SET some-string foo
 OK
 redis> SADD some-string bar
@@ -143,11 +165,12 @@ redis> SADD some-string bar
  holding the wrong kind of value
 \end{minted}
 
-\paragraph{Problem 2} Even worse, not all strings are equal! \mintinline{text}{INCR} parses the
-string value as an integer, increments it by one, and store it back as a string.
-If a string value can't be parse as an integer, another runtime error arises
+\paragraph{Problem 2} Even worse, not all strings are equal!
+\mintinline{text}{INCR} parses the string value as an integer, increments it by
+one, and store it back as a string. If a string value can't be parse as an
+integer, another runtime error arises
 
-\begin{minted}{text}
+\begin{minted}[xleftmargin=1em]{text}
 redis> SET some-string foo
 OK
 redis> INCR some-string
@@ -155,57 +178,264 @@ redis> INCR some-string
  of range
 \end{minted}
 
-\paragraph{In Hedis} The same goes for Hedis, since it's only a simple wrapping on top of Redis's
-protocol written in Haskell. No semantic checking is done, neither
-dynamically nor statically.
+\paragraph{In Hedis} The same goes for Hedis, since it's only a simple wrapping
+ on top of Redis's protocol written in Haskell.
 
-\begin{minted}{haskell}
+\begin{minted}[xleftmargin=1em]{haskell}
 program :: Redis (Either Reply Integer)
 program = do
     set "some-string" "foo"
     sadd "some-string" ["a"]
 \end{minted}
 
-Which yields the same error as in Redis's client.
+It yields the same error as in Redis's client.
 
-\begin{minted}{haskell}
+\begin{minted}[xleftmargin=1em]{haskell}
 Left (Error "WRONGTYPE Operation against a
  key holding the wrong kind of value")
 \end{minted}
 
+\paragraph{The Cause} These problems arise from the absence of type checking,
+with respects to \textbf{the type of a value that associates with a key}.
+
 \subsection{Hedis as an embedded DSL}
 
-Haskell makes it easy to build and use Domain Specific Languages (DSLs).
-Hedis can be regardred as one DSL that embeds in Haskell, that has variable
-bindings (between keys and values), but with very little or none semantic
-checkings.
+Haskell makes it easy to build and use Domain Specific Languages (DSLs),
+and Hedis can be regarded as one of them. What makes Hedis special is that,
+it has variable bindings (between keys and values), but with very
+little or no semantic checking, neither dynamically nor statically.
 
-We started out from making Hedis a dynamically checked embedded DSL, with a
-runtime type checker that keeps track of everything. But then we found that,
-things can be a lot easier, by laveraging the host language's type checker,
-and make it statically checked!
+We began with making Hedis a dynamically checked embedded DSL, and implemented a
+runtime type checker that keeps track of everything. But then we found that
+things can be a lot easier, by leveraging the host language's type checker,
+which also make it statically type-checked!
 
 \subsection{Contributions}
 
-To summerize our contributions:
+To summarize our contributions:
 
 \begin{itemize}[noitemsep]
-\item We model variable bindings of an embedded DSL with language extensions
-like type-level literals and data kinds.
-\item We provide (yet another) an example of how to encode effects and
-constraints of an action in types, with indexed monad and other language
- extensions such as closed type-families and constraints kinds.
+\item We make Hedis statically type-checked, without runtime overhead.
+\item We demonstrates how to model variable bindings of an embedded DSL with
+language extensions like type-level literals and data kinds.
+\item We provide (yet another) an example of encoding effects and
+ constraints of an action in types, with indexed monad\cite{indexedmonad}
+  and other language extensions such as closed
+  type-families\cite{closedtypefamilies} and constraints
+  kinds\cite{constraintskinds}.
 \item Edis, a package we built for programmers. This package helps programmers
-to write more reliable Redis codes, and makes Redis polymorphic by converting
-back and forth from values of any types and boring ByteStrings.
+ to write more reliable Redis codes, and also makes Redis polymorphic by
+ automatically converting back and forth from values of any types and boring
+ ByteStrings.
 \end{itemize}
 
-\section{Implementation}
-\subsection{Model bindings with Type-level Dictionaries}
-\paragraph{Type-level literals}
-\subsection{Bookkeeping with Type families}
-\subsection{Capture effects with Parameterised Monad}
-\paragraph{Type-level literals}
+\section{Type-level Dictionary}
+
+To check the bindings between keys and values, we need a \emph{dictionary-like}
+structure, and encode it as a \emph{type} somehow.
+
+\subsection{Datatype promotion}
+Normally, at the term level, we could express data type of the dictionary with
+\emph{type synonym} like this.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+type Key = String
+type Dictionary = [(Key, TypeRep)]
+\end{minted}
+
+To encode this in the type level, everything has to be
+\emph{promoted}\cite{promotion} one level up.
+From terms to types, and from types to kinds.
+
+Luckily, with recently added GHC extension \emph{data kinds}. With data kinds
+we can define our own kinds just like we can with datatypes, and every suitable
+datatype will be promoted to be a kind, and its value constructors promoted
+to be type constructors, automatically.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+data List a = Nil | Cons a (List a)
+\end{minted}
+
+Give rise to the following kinds and type constructors:\footnotemark\footnotemark
+
+\footnotetext{To distinguish between types and promoted constructors that have
+ ambiguous names, prefix promoted constructor with a single quote like
+ \mintinline{text}{'Nil} and \mintinline{text}{'Cons}}
+\footnotetext{All kinds have \emph{sort} BOX in Haskell\cite{sorts}}
+
+\begin{minted}[xleftmargin=1em]{haskell}
+List k :: BOX
+Nil  :: List k
+Cons :: k -> List k -> List k
+\end{minted}
+
+Haskell sugars lists \mintinline{haskell}{[1, 2, 3]} and
+tuples \mintinline{text}{(1, 'a')} with brackets and parentheses.
+Promoted lists and tuples are also sugared with single quote prefixed. For
+example \mintinline{text}{'}\mintinline{haskell}{[Int, Char]},
+\mintinline{text}{'}\mintinline{haskell}{(Int, Char)}.
+
+\subsection{Type-level literals}
+
+Now we have type-level lists and tuples to construct the dictionary.
+For keys, \mintinline{haskell}{String} also has a type-level correspondence:
+\mintinline{haskell}{Symbol}.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+data Symbol
+\end{minted}
+
+Symbol is defined without a value constructor, because it's
+intended to be used as a promoted kind.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+"this is a type-level string literal" :: Symbol
+\end{minted}
+
+Nonetheless, it's still useful to have a term-level value that links with a
+Symbol, when we want to retreive type-level informations at runtime (but not the
+ other way around!).
+
+\subsection{Putting everything together}
+
+With all of these ingrediants ready, let's build some dictionaries!
+
+\begin{minted}[xleftmargin=1em]{haskell}
+type DictEmpty = '[]
+type Dict0 = '[ '("key", Bool) ]
+type Dict1 = '[ '("A", Int), '("B", "A") ]
+\end{minted}
+
+They are defined with \emph{type synonym}, since they are \emph{types}
+, not \emph{terms}. If we ask \mintinline{text}{GHCi} what is the kind of
+\mintinline{haskell}{Dict1}, we get \mintinline{haskell}{Dict1 :: [ (Symbol, *) ]}
+
+The star \mintinline{haskell}{*} is a kind, it stands for any kind of types,
+such as \mintinline{haskell}{Int}, \mintinline{haskell}{Char} or even a symbol
+\mintinline{haskell}{"symbol"}, while \mintinline{haskell}{Symbol} stands only
+for all symbols.
+
+\section{Indexed Monad}
+
+Redis commands are \emph{actions}.
+We could capture the effects caused by an action, by expressing the states it
+affects, before and after. That is, the \emph{preconditions} and
+\emph{postconditions} of an action. In such way, we could also impose
+constraints on the preconditions.
+
+\emph{Indexed monads} (or \emph{monadish},
+\emph{parameterised monad})\cite{indexedmonad}
+can be used\cite{typefun}\cite{staticresources} to model such preconditions and
+postconditions in types. An indexed monad is a type constructor that takes three
+arguments: an intitial state, a final state, and the type of a value that an
+action computes, which can be read like a Hoare triple\cite{kleisli}.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+class IMonad m where
+    unit :: a -> m p p a
+    bind :: m p q a -> (a -> m q r b) -> m p r b
+\end{minted}
+
+Class \mintinline{haskell}{IMonad} comes with two operations:
+\mintinline{haskell}{unit} for identities and \mintinline{haskell}{bind} for
+compositions, as in Monad.
+
+We define a new datatype \mintinline{haskell}{Edis}, which is basically just
+\mintinline{haskell}{Redis} indexed with more informations in types. And we make
+ it an instance of \mintinline{haskell}{IMonad}.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+newtype Edis p q a = Edis { unEdis :: Redis a }
+
+instance IMonad Edis where
+    unit = Edis . return
+    bind m f = Edis (unEdis m >>= unEdis . f )
+\end{minted}
+
+The first and second argument of type \mintinline{haskell}{Edis} is where the
+dictionaries going to stay.
+
+\subsection{The first attempt}
+
+In Redis, \mintinline{text}{PING} does nothing but replies with
+\mintinline{text}{PONG} if the connection is alive. In Hedis,
+\mintinline{text}{PING} has type:
+
+\begin{minted}[xleftmargin=1em]{haskell}
+ping :: Redis (Either Reply Status)
+\end{minted}
+
+Now we have \mintinline{haskell}{Edis}, let's make our own version of
+\mintinline{haskell}{ping}\footnotemark
+
+\begin{minted}[xleftmargin=1em]{haskell}
+ping :: Edis xs xs (Either Reply Status)
+ping = Edis Hedis.ping
+\end{minted}
+
+Dicionary \mintinline{haskell}{xs} in the type remain unaffected after the
+action, because \mintinline{haskell}{ping} does not affect any key-value
+bindings. To encode other commands that alters key-value bindings, we need
+ type-level functions to annotate those effects on the dictionary.
+
+\section{Bookkeeping with type families}
+\subsection{Closed type families}
+
+Type families have a wide variaty of applications. They can appear inside type
+classes\cite{tfclass}\cite{tfsynonym}, or at toplevel. Toplevel type families
+can be used to compute over types, they come in open\cite{tfopen} or closed
+forms\cite{tfclosed}. We are using \emph{closed type families} since we need
+none of the extensibility provided by open type families, and we may need to
+overlap instances, like what we do in defining function cases.
+
+%  are
+% permitted as well.
+%
+%
+%  open type synonym families, and
+% closed type synonym families
+% One of which is to compute types, we are using closed type families, since all
+% we want is to use it as a function on the type level, no extensibility needed,
+% everything is defined in one-piece
+
+
+\footnotetext{\mintinline{haskell}{ping} from Hedis is qualified with
+\mintinline{haskell}{Hedis} to prevent function name clashing}
+%
+% \mintinline{haskell}{IMonad} \mintinline{haskell}{IMonad} takes three arguments: an intitial state \mintinline{haskell}{p}, a final
+%  state, and computes a value of type a
+
+
+
+\subsection{Proxies and Kind polymorphism}
+
+Since Haskell has a phase distinction\cite{phasedistinction} between
+
+To link a symbol with a term-level value
+
+What we need is a \emph{singleton}\cite{singletons}, a type
+that has only one instance at the term level.
+
+With \emph{kind polymorphism}\cite{promotion}, we have parametric polymorphism
+at the kind level.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+Proxy :: Proxy "a"
+\end{minted}
+
+\subsection{Closed type families}
+
+\subsection{Conclusions and Related Work}
+
+
+% references
+\bibliographystyle{abbrvnat}
+\bibliography{cites}
+
+% \subsection{Model bindings with Type-level Dictionaries}
+% \subsection{Bookkeeping with Type families}
+% \subsection{Capture effects with Index Monad}
+% \paragraph{Type-level literals}
 
 
 %

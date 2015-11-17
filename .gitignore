@@ -6,6 +6,8 @@
 *.out
 *.pdf
 *.synctex.gz
+*.blg
+*.bbl
 
 # minted
 _minted*
