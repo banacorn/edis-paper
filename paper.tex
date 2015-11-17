@@ -236,12 +236,15 @@ structure, and encode it as a \emph{type} somehow.
 
 \subsection{Datatype promotion}
 Normally, at the term level, we could express data type of the dictionary with
-\emph{type synonym} like this.
+\emph{type synonym} like this.\footnotemark
 
 \begin{minted}[xleftmargin=1em]{haskell}
 type Key = String
 type Dictionary = [(Key, TypeRep)]
 \end{minted}
+
+\footnotetext{\mintinline{haskell}{TypeRep} here represents term-level
+representations of datatypes, available in \mintinline{haskell}{Data.Typeable}}
 
 To encode this in the type level, everything has to be
 \emph{promoted}\cite{promotion} one level up.
@@ -368,6 +371,9 @@ ping :: Redis (Either Reply Status)
 Now we have \mintinline{haskell}{Edis}, let's make our own version of
 \mintinline{haskell}{ping}\footnotemark
 
+\footnotetext{\mintinline{haskell}{ping} from Hedis is qualified with
+\mintinline{haskell}{Hedis} to prevent function name clashing}
+
 \begin{minted}[xleftmargin=1em]{haskell}
 ping :: Edis xs xs (Either Reply Status)
 ping = Edis Hedis.ping
@@ -404,7 +410,109 @@ The first instance of \mintinline{haskell}{And} could be subsumed
 under the more general instance \mintinline{haskell}{And a b}.
 But the closedness allows these instances to be resoluted in order, just like
 how cases are resoluted in term-level functions. Also notice that how much
-\mintinline{haskell}{And} resembles to it's term-level brother.
+\mintinline{haskell}{And} resembles to it's term-level sibling.
+
+\subsection{Functions on type-level dictionaries}
+
+With closed type families, we could define functions on the type level.
+Let's begin with dictionary lookup.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+type family Get
+    (xs :: [(Symbol, *)])   -- dictionary
+    (s :: Symbol)           -- key
+    :: * where              -- type
+
+    Get (’(s, x) ’: xs) s = x
+    Get (’(t, x) ’: xs) s = Get xs s
+\end{minted}
+
+Another benifit of closed type families is that type-level equality can be
+expressed by unifying type variables with the same name.
+\mintinline{haskell}{Get} takes two type arguments, a dictionary and a symbol.
+If the key we are looking for unifies with the symbol of an entry, then
+ \mintinline{haskell}{Get} returns the corresponding type, else it keeps
+ searching down the rest of the dictionary.
+
+\mintinline{haskell}{Get }\mintinline{text}{ '}\mintinline{haskell}{[ }
+\mintinline{text}{'}\mintinline{haskell}{("A", Int) ] "A"} evaluates to
+\mintinline{haskell}{Int}.
+
+But \mintinline{haskell}{Get }
+\mintinline{text}{'}\mintinline{haskell}{[ }
+\mintinline{text}{'}\mintinline{haskell}{("A", Int) ] "B"} would get stuck.
+That's because \mintinline{haskell}{Get} is a partial function on types,
+ and these types are computed at compile-time. It wouldn't make
+much sense for type checkers to crash and throw a "Non-exhaustive" error or
+be non-terminating.
+
+We could make \mintinline{haskell}{Get} total, as we would at the term level,
+with \mintinline{haskell}{Maybe}.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+type family Get
+    (xs :: [(Symbol, *)])   -- dictionary
+    (s :: Symbol)           -- key
+    :: Maybe * where        -- type
+
+    Get ’[]             s = Nothing
+    Get (’(s, x) ’: xs) s = Just x
+    Get (’(t, x) ’: xs) s = Get xs s
+\end{minted}
+
+Other dictionary-related functions are defined in a similar way.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+-- inserts or updates an entry
+type family Set
+    (xs :: [(Symbol, *)])   -- old dictionary
+    (s :: Symbol)           -- key
+    (x :: *)                -- type
+    :: [(Symbol, *)] where  -- new dictionary
+
+    Set ’[]             s x = ’[ ’(s, x) ]
+    Set (’(s, y) ’: xs) s x = (’(s, x) ’: xs)
+    Set (’(t, y) ’: xs) s x =
+        ’(t, y) ’: (Set xs s x)
+
+-- removes an entry
+type family Del
+    (xs :: [(Symbol, *)])   -- old dictionary
+    (s :: Symbol)           -- key
+    :: [(Symbol, *)] where  -- new dictionary
+
+    Del ’[] s             = ’[]
+    Del (’(s, y) ’: xs) s = xs
+    Del (’(t, y) ’: xs) s = ’(t, y) ’: (Del xs s)
+
+-- membership
+type family Member
+    (xs :: [(Symbol, *)])   -- dictionary
+    (s :: Symbol)           -- key
+    :: Bool where           -- exists?
+
+    Member ’[]             s = False
+    Member (’(s, x) ’: xs) s = True
+    Member (’(t, x) ’: xs) s = Member xs s
+\end{minted}
+
+
+\begin{minted}[xleftmargin=1em]{haskell}
+type family Get
+    (xs :: [(Symbol, *)])   -- dictionary
+    (s :: Symbol)           -- key
+    :: Maybe * where        -- type
+
+    Get ’[]             s = Nothing
+    Get (’(s, x) ’: xs) s = Just x
+    Get (’(t, x) ’: xs) s = Get xs s
+\end{minted}
+
+
+% \begin{minted}[xleftmargin=1em]{haskell}
+% Get '['("ha", Int)]
+% \end{minted}
+
 
 
 %  are
@@ -418,8 +526,6 @@ how cases are resoluted in term-level functions. Also notice that how much
 % everything is defined in one-piece
 
 
-\footnotetext{\mintinline{haskell}{ping} from Hedis is qualified with
-\mintinline{haskell}{Hedis} to prevent function name clashing}
 %
 % \mintinline{haskell}{IMonad} \mintinline{haskell}{IMonad} takes three arguments: an intitial state \mintinline{haskell}{p}, a final
 %  state, and computes a value of type a
