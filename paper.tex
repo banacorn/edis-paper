@@ -41,6 +41,9 @@
 \usepackage{fontspec}
 \setmonofont{Inconsolata}
 
+% for clickable footnotes
+\usepackage{hyperref}
+
 
 \begin{document}
 
@@ -550,7 +553,7 @@ Redis supports many different datatypes, these datatypes as can be viewed as
 \emph{containers} of strings. For example, lists (of strings),
 sets (of strings), and strings themselves.
 
-\section{Denoting containers}
+\subsection{Denoting containers}
 Most Redis commands only work with a certain type of these containers. To
 annotate what container a key is associated with, we introduce these container
 types.
@@ -601,9 +604,13 @@ decode :: Serialize a
 Which would do all the works for us, as long as the datatype it's handling is
 an instance of class \mintinline{haskell}{Serialize}.\footnotemark
 
+\footnotetext{The methods of \mintinline{haskell}{Serialize} will have default
+generic implementations for all datatypes with some language extenstions
+enabled, no sweat!}
+
 \subsection{Extending container types}
 We rename container types and extend it with an extra type arguement,
-to indicate what kind of data it's holding.
+ to indicate what kind of encoded value it's holding.
 
 \begin{minted}[xleftmargin=1em]{haskell}
 data StringOf x
@@ -626,31 +633,109 @@ For example, if we execute \mintinline{haskell}{set (Proxy :: Proxy "A") True},
 a new entry \mintinline{text}{'}\mintinline{haskell}{("A", StringOf Bool)} will
 be inserted to the dictionary.
 
-
-
-
-\footnotetext{The methods of \mintinline{haskell}{Serialize} will have default
-generic implementations for all datatypes with some language extenstions
-enabled, no sweat!}
-
-\subsection{Imposing constraints}
+\section{Imposing constraints}
 
 To rule out programs with undesired properties, certain constraints must be
-imposed, on what arguments they can take, and what preconditions they must hold.
-These constraints are best encoded in types.
+imposed, on what arguments they can take, or what preconditions they must hold.
 
-\subsection{Redis datatypes}
+Consider the following example: \mintinline{text}{LLEN} retrurns the length of
+the list associated with a key, else raises a type error.
 
-Redis supports many different datatypes, and most commands only work with
-certain types of them. For example: \mintinline{haskell}{SET} with strings or
-\mintinline{haskell}{SADD} with sets.
+\begin{minted}[xleftmargin=1em]{text}
+redis> LPUSH some-list bar
+(integer) 1
+redis> LLEN some-list
+(integer) 1
+redis> SET some-string foo
+OK
+redis> LLEN some-string
+(error) WRONGTYPE Operation against a key
+holding the wrong kind of value
+\end{minted}
 
+Such constraint could be expressed in types with
+\emph{equality constraints}\cite{typeeq}.
 
+\begin{minted}[xleftmargin=1em]{haskell}
+llen :: (KnownSymbol s, Get xs s ~ Just (ListOf x))
+        => Proxy s
+        -> Edis xs xs (Either Reply Integer)
+llen key = Edis $ Hedis.llen (symbolVal key)
+\end{minted}
 
+Where \mintinline{haskell}{(~)} denotes that \mintinline{haskell}{Get xs s}
+and \mintinline{haskell}{Just (ListOf x)} needs to be the same.
 
+The semantics of \mintinline{text}{LLEN} defined above is actually not
+complete. \mintinline{text}{LLEN} also accepts keys that do not exist and
+ returns 0. We will need \emph{}
 
+\begin{minted}[xleftmargin=1em]{text}
+redis> LLEN nonexistent
+(integer) 0
+\end{minted}
+
+In other words, we require that the key to be associated with a list,
+ \textbf{or} does not exist at all.
+
+\subsection{Expressing constraint disjunctions}
+
+Unfortunately, expressing disjunctions in constraints is much more difficult
+than expressing conjunctions, since the latter could be easily done by placing
+ constraints in a tuple (at the left side of \mintinline{haskell}{=>}).
+
+But there are at least three ways to express type-level constraints
+\cite{singletons}. Luckily we could express constraint disjunctions with type
+ families in a modular way.
+
+The semantics we want could be expressed informally like this:
+
+\mintinline{haskell}{Get xs s} $\equiv$ \mintinline{haskell}{Just (ListOf x)}
+$\vee$ $\neg$ \mintinline{haskell}{(Member xs s)}
+
+We could achieve this simply by translating the semantics we want to the
+domain of Booleans, with type-level boolean functions such as
+\mintinline{haskell}{(&&)},
+\mintinline{haskell}{(||)}, \mintinline{haskell}{Not},
+\mintinline{haskell}{(==)}, etc.\footnotemark To avoid
+
+\footnotetext{Available in \mintinline{text}{Data.Type.Bool} and
+ \mintinline{text}{Data.Type.Equality}}
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+Get xs s == Just (ListOf x) || Not (Member xs s)
+\end{minted}
+
+To avoid adressing the type of value (as it may not exist at all), we defined an
+ auxiliary predicate \mintinline{haskell}{IsList :: Maybe * -> Bool} to replace
+ the former part.
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+IsList (Get xs s) || Not (Member xs s)
+\end{minted}
+
+The type expression above has kind \mintinline{haskell}{Bool}, we could make it
+ a type constraint by asserting equality.
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+(IsList (Get xs s) || Not (Member xs s)) ~ True
+\end{minted}
+
+With \emph{constraint kind}, a recent addition to GHC. Type constraints now has
+its own kind: \mintinline{haskell}{Constraint}. That means type constraints
+are not restricted to the left side of a \mintinline{haskell}{=>} anymore,
+they could appear in anywhere that accepts something of kind
+\mintinline{haskell}{Constraint}, and any type that has kind
+\mintinline{haskell}{Constraint} can also be used as a type constraint.\footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
+We could give the lengthy constraint above a type synonym.
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+ListOrNX xs s =
+    (IsList (Get xs s) || Not (Member xs s)) ~ True
+\end{minted}
 
 \section{Discussions}
+
 \section{Conclusions and Related Work}
 
 
