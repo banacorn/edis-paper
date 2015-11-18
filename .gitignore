@@ -13,3 +13,4 @@ _minted*
 
 # Redis
 dump.rdb
+references.md
