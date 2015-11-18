@@ -299,12 +299,12 @@ intended to be used as a promoted kind.
 \end{minted}
 
 Nonetheless, it's still useful to have a term-level value that links with a
-Symbol, when we want to retreive type-level informations at runtime (but not the
+Symbol, when we want to retrieve type-level information at runtime (but not the
  other way around!).
 
 \subsection{Putting everything together}
 
-With all of these ingrediants ready, let's build some dictionaries!
+With all of these ingredients ready, let's build some dictionaries!
 
 \begin{minted}[xleftmargin=1em]{haskell}
 type DictEmpty = '[]
@@ -333,7 +333,7 @@ constraints on the preconditions.
 \emph{parameterised monad})\cite{indexedmonad}
 can be used\cite{typefun}\cite{staticresources} to model such preconditions and
 postconditions in types. An indexed monad is a type constructor that takes three
-arguments: an intitial state, a final state, and the type of a value that an
+arguments: an initial state, a final state, and the type of a value that an
 action computes, which can be read like a Hoare triple\cite{kleisli}.
 
 \begin{minted}[xleftmargin=1em]{haskell}
@@ -347,7 +347,7 @@ Class \mintinline{haskell}{IMonad} comes with two operations:
 compositions, as in Monad.
 
 We define a new datatype \mintinline{haskell}{Edis}, which is basically just
-\mintinline{haskell}{Redis} indexed with more informations in types. And we make
+\mintinline{haskell}{Redis} indexed with more information in types. And we make
  it an instance of \mintinline{haskell}{IMonad}.
 
 \begin{minted}[xleftmargin=1em]{haskell}
@@ -363,7 +363,7 @@ dictionaries going to stay.
 
 To execute a \mintinline{haskell}{Edis} program, simply apply it to
  \mintinline{haskell}{unEdis} to get an ordinary
- \mintinline{haskell}{Hedis} program, with type informations erased.
+ \mintinline{haskell}{Hedis} program, with type information erased.
 
 \subsection{\mintinline{text}{PING}: the first attempt}
 
@@ -386,7 +386,7 @@ ping :: Edis xs xs (Either Reply Status)
 ping = Edis Hedis.ping
 \end{minted}
 
-Dicionary \mintinline{haskell}{xs} in the type remain unaffected after the
+Dictionary \mintinline{haskell}{xs} in the type remain unaffected after the
 action, because \mintinline{haskell}{ping} does not affect any key-value
 bindings. To encode other commands that alters key-value bindings, we need
  type-level functions to annotate those effects on the dictionary.
@@ -394,7 +394,7 @@ bindings. To encode other commands that alters key-value bindings, we need
 \section{Type-level functions}
 \subsection{Closed type families}
 
-Type families have a wide variaty of applications. They can appear inside type
+Type families have a wide variety of applications. They can appear inside type
 classes\cite{tfclass}\cite{tfsynonym}, or at toplevel. Toplevel type families
 can be used to compute over types, they come in two forms: open\cite{tfopen} and
 closed \cite{tfclosed}.
@@ -415,8 +415,8 @@ type family And (a :: Bool) (b :: Bool) :: Bool where
 
 The first instance of \mintinline{haskell}{And} could be subsumed
 under the more general instance \mintinline{haskell}{And a b}.
-But the closedness allows these instances to be resoluted in order, just like
-how cases are resoluted in term-level functions. Also notice that how much
+But the closedness allows these instances to be resolved in order, just like
+how cases are resolved in term-level functions. Also notice that how much
 \mintinline{haskell}{And} resembles to it's term-level sibling.
 
 \subsection{Functions on type-level dictionaries}
@@ -434,7 +434,7 @@ type family Get
     Get (’(t, x) ’: xs) s = Get xs s
 \end{minted}
 
-Another benifit of closed type families is that type-level equality can be
+Another benefit of closed type families is that type-level equality can be
 expressed by unifying type variables with the same name.
 \mintinline{haskell}{Get} takes two type arguments, a dictionary and a symbol.
 If the key we are looking for unifies with the symbol of an entry, then
@@ -517,13 +517,13 @@ del key = Edis $ Hedis.del (symbolVal key)
 \end{minted}
 
 \mintinline{haskell}{KnownSymbol} is a class that gives the string associated
-with a concrete type-level symbol, which can be retreived with
+with a concrete type-level symbol, which can be retrieved with
 \mintinline{haskell}{symbolVal}.\footnotemark
 
 \footnotetext{They are defined in \mintinline{haskell}{GHC.TypeLits}.}
 
 Since Haskell has a \emph{phase distinction}\cite{phasedistinction}, types are
-erased before runtime. It's impossible to obtain informations directly from
+erased before runtime. It's impossible to obtain information directly from
 types, we can only do this indirectly, with \emph{singleton types}
 \cite{singletons}.
 
@@ -537,7 +537,7 @@ singletons. It's a phantom type that could be indexed with any type.
 data Proxy t = Proxy
 \end{minted}
 
-In the type of \mintinline{haskell}{del}, the type varabile
+In the type of \mintinline{haskell}{del}, the type variable
 \mintinline{haskell}{s} would be a \mintinline{haskell}{Symbol} that is decided
  by the argument of type \mintinline{haskell}{Proxy s}.
 To use \mintinline{haskell}{del}, we would have to apply it with a clumsy
@@ -578,10 +578,6 @@ set key val = Edis $ Hedis.set (symbolVal key) val
 
 After \mintinline{text}{SET}, the key will be associated with
 \mintinline{haskell}{Strings} in the dictionary, indicating that it's a string.
-%
-% So far, the datatypes we are dealing with, are all of those built-in Redis data
-% structures, such as \emph{strings}, \emph{lists (of strings)},
-% \emph{sets (of strings)}, etc.
 
 \subsection{Automatic data serialization}
 But in the real world, raw binary strings are hardly useful, people would
@@ -605,11 +601,11 @@ Which would do all the works for us, as long as the datatype it's handling is
 an instance of class \mintinline{haskell}{Serialize}.\footnotemark
 
 \footnotetext{The methods of \mintinline{haskell}{Serialize} will have default
-generic implementations for all datatypes with some language extenstions
+generic implementations for all datatypes with some language extensions
 enabled, no sweat!}
 
 \subsection{Extending container types}
-We rename container types and extend it with an extra type arguement,
+We rename container types and extend it with an extra type argument,
  to indicate what kind of encoded value it's holding.
 
 \begin{minted}[xleftmargin=1em]{haskell}
@@ -633,12 +629,31 @@ For example, if we execute \mintinline{haskell}{set (Proxy :: Proxy "A") True},
 a new entry \mintinline{text}{'}\mintinline{haskell}{("A", StringOf Bool)} will
 be inserted to the dictionary.
 
+\subsection{Handling \mintinline{text}{INCR}}
+
+Commands such as \mintinline{text}{INCR}, \mintinline{text}{INCRBYFLOAT}, are
+ not only container-specific, there are also some requirements on what types of
+ value they could operate on.
+
+We handle this by mapping Redis's strings of integers and floats to Haskell's
+\mintinline{text}{Integer} and \mintinline{text}{Double}.
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+incr :: (KnownSymbol s, Get xs s ~ Just (StringOf Integer))
+     => Proxy s -> Edis xs xs (Either Reply Integer)
+incr key = Edis $ Hedis.incr (symbolVal key)
+
+incrbyfloat :: (KnownSymbol s, Get xs s ~ Just (StringOf Double))
+     => Proxy s -> Double -> Edis xs xs (Either Reply Double)
+incrbyfloat key n = Edis $ Hedis.incrbyfloat (symbolVal key) n
+\end{minted}
+
 \section{Imposing constraints}
 
 To rule out programs with undesired properties, certain constraints must be
 imposed, on what arguments they can take, or what preconditions they must hold.
 
-Consider the following example: \mintinline{text}{LLEN} retrurns the length of
+Consider the following example: \mintinline{text}{LLEN} returns the length of
 the list associated with a key, else raises a type error.
 
 \begin{minted}[xleftmargin=1em]{text}
@@ -694,7 +709,7 @@ The semantics we want could be expressed informally like this:
 $\vee$ $\neg$ \mintinline{haskell}{(Member xs s)}
 
 We could achieve this simply by translating the semantics we want to the
-domain of Booleans, with type-level boolean functions such as
+domain of Boolean, with type-level boolean functions such as
 \mintinline{haskell}{(&&)},
 \mintinline{haskell}{(||)}, \mintinline{haskell}{Not},
 \mintinline{haskell}{(==)}, etc.\footnotemark To avoid
@@ -706,7 +721,7 @@ domain of Booleans, with type-level boolean functions such as
 Get xs s == Just (ListOf x) || Not (Member xs s)
 \end{minted}
 
-To avoid adressing the type of value (as it may not exist at all), we defined an
+To avoid addressing the type of value (as it may not exist at all), we defined an
  auxiliary predicate \mintinline{haskell}{IsList :: Maybe * -> Bool} to replace
  the former part.
 
@@ -727,16 +742,97 @@ are not restricted to the left side of a \mintinline{haskell}{=>} anymore,
 they could appear in anywhere that accepts something of kind
 \mintinline{haskell}{Constraint}, and any type that has kind
 \mintinline{haskell}{Constraint} can also be used as a type constraint.\footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
-We could give the lengthy constraint above a type synonym.
+
+As many other list-related commands also have this "List or Nothing" semantics,
+we could abstract the lengthy type constraint above and give it an alias with
+type synonym.
 
 \begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 ListOrNX xs s =
     (IsList (Get xs s) || Not (Member xs s)) ~ True
 \end{minted}
 
-\section{Discussions}
+The complete implementation of \mintinline{text}{LLEN} with
+\mintinline{haskell}{ListOrNX} would become:
 
-\section{Conclusions and Related Work}
+\begin{minted}[xleftmargin=1em]{haskell}
+llen :: (KnownSymbol s, ListOrNX xs s)
+        => Proxy s
+        -> Edis xs xs (Either Reply Integer)
+llen key = Edis $ Hedis.llen (symbolVal key)
+\end{minted}
+
+\section{Assertions}
+
+Users may need to make assertions about the status of certain key-type bindings
+ in a Redis program. For example, declaring the existence of a key and the type
+ of its associating value. We provide these functions, which do nothing but
+ fiddling with types.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+declare :: (KnownSymbol s, Member xs s ~ False)
+        => Proxy s
+        -> Proxy x  -- type of value
+        -> Edis xs (Set xs s x) ()
+declare s x = Edis $ return ()
+
+renounce :: (KnownSymbol s, Member xs s ~ True)
+        => Proxy s -> Edis xs (Del xs s) ()
+renounce s = Edis $ return ()
+
+-- empty precondition
+start :: Edis ’[] ’[] ()
+start = Edis $ return ()
+\end{minted}
+
+\subsection{A complete example}
+
+The following program increases the value of "A" as an integer,
+and push the result of increment to list "L", and then pops it out.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+main :: IO ()
+main = do
+    conn <- connect defaultConnectInfo
+    result <- runRedis conn $ unEdis $ start
+        `bind` \_ ->  declare
+                        (Proxy :: Proxy "A")
+                        (Proxy :: Proxy Integer)
+        `bind` \_ ->  incr     (Proxy :: Proxy "A")
+        `bind` \n ->  case n of
+            Left  err -> lpush (Proxy :: Proxy "L") 0
+            Right n   -> lpush (Proxy :: Proxy "L") n
+        `bind` \_ ->  lpop     (Proxy :: Proxy "L")
+    print result
+\end{minted}
+
+The syntax is pretty heavy, like the old days when there's no
+do-notation\cite{history}. But if we don't need any variable bindings between
+operations, we could compose these commands with a sequencing operator
+\mintinline{haskell}{(>>>)}.
+
+\begin{minted}[xleftmargin=1em]{haskell}
+(>>>) :: IMonad m => m p q a -> m q r b -> m p r b
+
+program = start
+    >>> declare
+            (Proxy :: Proxy "A")
+            (Proxy :: Proxy Integer)
+    >>> incr    (Proxy :: Proxy "A")
+    >>> lpush   (Proxy :: Proxy "L") 0
+    >>> lpop    (Proxy :: Proxy "L")
+\end{minted}
+
+We could even get rid of \mintinline{haskell}{(>>>)} with
+ \emph{rebindable syntax}\footnote{See \url{https://downloads.haskell.org/~ghc/latest/docs/html/users_guide/syntax-extns.html#rebindable-syntax}.},
+if we are so inclined.
+
+\section{Discussions}
+\paragraph{Syntax}
+\paragraph{Commands with multiple inputs or outputs}
+\paragraph{Redis Transactions}
+\section{Conclusion and Related Work}
+\paragraph{Acknowledgements}
 
 
 % references
