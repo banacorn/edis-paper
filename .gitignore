@@ -14,3 +14,5 @@ _minted*
 # Redis
 dump.rdb
 references.md
+paper.mintedcmd
+paper.pyg
