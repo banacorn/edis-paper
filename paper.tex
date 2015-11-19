@@ -53,11 +53,15 @@
 % any author declaration will be ignored  when using 'pldi' option (for double blind review)
 %
 
-\authorinfo{Person 1 \and Person 2}
-{\makebox{A Department} \\
-\makebox{A University}  \\
-\makebox{A Place, AS 12345}}
-{\{person1,person2\}@cs.auniv.edu}
+\authorinfo{Ting-Yan Lai}
+{\makebox{Institute of Computer Science and Engineering} \\
+\makebox{National Chiao Tung University, Taiwan}}
+{banacorn.cs03g@nctu.edu.tw}
+
+\authorinfo{Tyng-Ruey Chuang \and Shin-Cheng Mu}
+{\makebox{Institute of Information Science} \\
+\makebox{Academia Sinica, Taiwan}}
+{\{trc,scm\}@iis.sinica.edu.tw}
 
 \maketitle
 
@@ -146,7 +150,7 @@ Keys and values are of type \mintinline{haskell}{ByteString}, since they are all
 
 \footnotetext{Hedis provides another kind of context, \mintinline{haskell}{RedisTx}, for \emph{transactions}, united with \mintinline{haskell}{Redis} under the class of \mintinline{haskell}{RedisCtx}. We are demonstrating \mintinline{haskell}{Redis} only for brevity. }
 
-\subsection{Problems}
+\section{Motivation}
 
 \say{All binary strings are equal, but some binary strings are more equal than others.}
 
@@ -834,8 +838,8 @@ program = start
 \section{Discussions}
 \paragraph{Syntax}
 No one could ignore the glaring shortcoming of the syntax, which occurs mainly
- in two places: symbol singletons and indexed monad. We are hoping that these
- issues could be solved with future syntactic extensions.
+ in two places: \emph{symbol singletons} and \emph{indexed monad}. We are hoping
+ that these issues could be solved with future syntactic extensions.
 
 \paragraph{Returns only determined datatypes}
 
@@ -877,8 +881,8 @@ Hedis.sinter :: [ByteString]                      -- keys
 
 In Hedis such command could easily be expressed with lists of
  \mintinline{haskell}{ByteString}s. But in Edis, things escalate quickly, as
- the keys and values will have to be expressed with heterogeneous
- lists\cite{hetero}, which would be pratically infeasible, considering the cost,
+ the keys and values will have to be expressed with \emph{heterogeneous
+ lists}\cite{hetero}, which would be pratically infeasible, considering the cost,
  if not impossible.
 
 Most importantly, the keys will all have to be constrained by
@@ -895,11 +899,11 @@ sinter :: ByteString                      -- single key
 
 \paragraph{Redis Transactions}
 
-Redis provides transactions, another context for executing commands.
+Redis also provides \emph{transactions}, another context for executing commands.
 Redis trasanctions are atomic in the sense that, all commands in a transaction
  will executed sequentially, and no other requests issued by other clients will
- be served in the middle.\footnotemark In contrast, we cannot make such
- guarantee in the ordinary context, which may destroy the assertions we made
+ be served \textbf{in the middle}.\footnotemark In contrast, we cannot make such
+ a guarantee in the ordinary context, which may destroy the assertions we made
  in types.
 
 At the point of writing, transactions are not supported in our implementation.
@@ -910,9 +914,27 @@ At the point of writing, transactions are not supported in our implementation.
 
 \footnotetext{\url{http://redis.io/topics/transactions}}
 
-\section{Conclusion and Related Work}
-\paragraph{Acknowledgements}
+\section{Related Work}
 
+While Redis can be viewed as a non-relational database system (although Redis
+ seems reluctant to admit this in recent years), there also similar goals on
+ relational database systems, trying to achieve a safer database interface by
+ making them statically checked.
+ \emph{HaskellDB}\cite{haskelldb}\cite{haskelldbimproved} expresses quries
+ with relational algebra-like combinators, wrapped in phantom types. Or as
+ examples, at first to demonstrate the power of dependent types in
+ Agda\cite{pi}, and then with singletons in Haskell\cite{singletons}.
+
+\section{Conclusions}
+
+We have shown that how a embedded DSL with variable-bindings could be expressed
+ in types and statically checked. With recent extensions to the language,
+ Haskell is becoming more and more capable of dependently-typed programming, and
+ it's not that scary as many (including me) would have thought.
+
+\paragraph{Acknowledgements}
+This material is based upon work supported by Institute of Information Science,
+Academia Sinica under the Summer Internship Program of 2015.
 
 % references
 \bibliographystyle{abbrvnat}
