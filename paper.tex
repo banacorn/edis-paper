@@ -144,7 +144,7 @@ Keys and values are of type \mintinline{haskell}{ByteString}, since they are all
  arbitrary types, he or she will have to encode and decode them as
  \mintinline{haskell}{ByteString}s.
 
-\footnotetext{Hedis provides another kind of context, \mintinline{haskell}{RedisTx}, for \emph{transactions}, united with \mintinline{haskell}{Redis} under the class of \mintinline{haskell}{RedisCtx}. We demonstrate \mintinline{haskell}{Redis} only for brevity. }
+\footnotetext{Hedis provides another kind of context, \mintinline{haskell}{RedisTx}, for \emph{transactions}, united with \mintinline{haskell}{Redis} under the class of \mintinline{haskell}{RedisCtx}. We are demonstrating \mintinline{haskell}{Redis} only for brevity. }
 
 \subsection{Problems}
 
@@ -895,7 +895,20 @@ sinter :: ByteString                      -- single key
 
 \paragraph{Redis Transactions}
 
+Redis provides transactions, another context for executing commands.
+Redis trasanctions are atomic in the sense that, all commands in a transaction
+ will executed sequentially, and no other requests issued by other clients will
+ be served in the middle.\footnotemark In contrast, we cannot make such
+ guarantee in the ordinary context, which may destroy the assertions we made
+ in types.
 
+At the point of writing, transactions are not supported in our implementation.
+ We are planning to add it in the future, and we are expecting that there
+ wouldn't be much difficulties, since we've implemented a runtime type checker
+ specifically targeting Redis transactions once, before we moved on to the
+ types.
+
+\footnotetext{\url{http://redis.io/topics/transactions}}
 
 \section{Conclusion and Related Work}
 \paragraph{Acknowledgements}
