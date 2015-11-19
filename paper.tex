@@ -514,14 +514,20 @@ Now we could annotate the effects of a command in types. \mintinline{text}{DEL}
 del :: KnownSymbol s
     => Proxy s
     -> Edis xs (Del xs s) (Either Reply Integer)
-del key = Edis $ Hedis.del (symbolVal key)
+del key = Edis $ Hedis.del (encodeKey key)
 \end{minted}
 
 \mintinline{haskell}{KnownSymbol} is a class that gives the string associated
  with a concrete type-level symbol, which can be retrieved with
  \mintinline{haskell}{symbolVal}.\footnotemark
-
+ Where \mintinline{haskell}{encodeKey} converts \mintinline{haskell}{Proxy s} to
+ \mintinline{haskell}{ByteString}.
 \footnotetext{They are defined in \mintinline{haskell}{GHC.TypeLits}.}
+
+\begin{minted}[xleftmargin=1em]{haskell}
+encodeKey :: KnownSymbol s => Proxy s -> ByteString
+encodeKey = encode . symbolVal
+\end{minted}
 
 Since Haskell has a \emph{phase distinction}\cite{phasedistinction}, types are
  erased before runtime. It's impossible to obtain information directly from
@@ -574,7 +580,7 @@ set :: KnownSymbol s
     => Proxy s
     -> ByteString       -- data to store
     -> Edis xs (Set xs s Strings) (Either Reply Status)
-set key val = Edis $ Hedis.set (symbolVal key) val
+set key val = Edis $ Hedis.set (encodeKey key) val
 \end{minted}
 
 After \mintinline{text}{SET}, the key will be associated with
@@ -623,7 +629,7 @@ set :: (KnownSymbol s, Serialize x)
     => Proxy s
     -> x       -- can be anything, as long as it's serializable
     -> Edis xs (Set xs s (StringOf x)) (Either Reply Status)
-set key val = Edis $ Hedis.set (symbolVal key) (encode val)
+set key val = Edis $ Hedis.set (encodeKey key) (encode val)
 \end{minted}
 
 For example, if we execute \mintinline{haskell}{set (Proxy :: Proxy "A") True},
@@ -642,11 +648,11 @@ We could handle this by mapping Redis's strings of integers and floats to
 \begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 incr :: (KnownSymbol s, Get xs s ~ Just (StringOf Integer))
      => Proxy s -> Edis xs xs (Either Reply Integer)
-incr key = Edis $ Hedis.incr (symbolVal key)
+incr key = Edis $ Hedis.incr (encodeKey key)
 
 incrbyfloat :: (KnownSymbol s, Get xs s ~ Just (StringOf Double))
      => Proxy s -> Double -> Edis xs xs (Either Reply Double)
-incrbyfloat key n = Edis $ Hedis.incrbyfloat (symbolVal key) n
+incrbyfloat key n = Edis $ Hedis.incrbyfloat (encodeKey key) n
 \end{minted}
 
 \section{Imposing constraints}
@@ -676,7 +682,7 @@ Such constraint could be expressed in types with
 llen :: (KnownSymbol s, Get xs s ~ Just (ListOf x))
         => Proxy s
         -> Edis xs xs (Either Reply Integer)
-llen key = Edis $ Hedis.llen (symbolVal key)
+llen key = Edis $ Hedis.llen (encodeKey key)
 \end{minted}
 
 Where \mintinline{haskell}{(~)} denotes that \mintinline{haskell}{Get xs s}
@@ -745,7 +751,7 @@ With \emph{constraint kind}, a recent addition to GHC. Type constraints now has
  \mintinline{haskell}{Constraint} can also be used as a type constraint.
  \footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
 
-As many other list-related commands also have this "List or Nothing" semantics,
+As many other list-related commands also have this "List or nothing" semantics,
  we could abstract the lengthy type constraint above and give it an alias with
  type synonym.
 
@@ -761,7 +767,7 @@ The complete implementation of \mintinline{text}{LLEN} with
 llen :: (KnownSymbol s, ListOrNX xs s)
         => Proxy s
         -> Edis xs xs (Either Reply Integer)
-llen key = Edis $ Hedis.llen (symbolVal key)
+llen key = Edis $ Hedis.llen (encodeKey key)
 \end{minted}
 
 \section{Assertions}
@@ -827,8 +833,70 @@ program = start
 
 \section{Discussions}
 \paragraph{Syntax}
+No one could ignore the glaring shortcoming of the syntax, which occurs mainly
+ in two places: symbol singletons and indexed monad. We are hoping that these
+ issues could be solved with future syntactic extensions.
+
+\paragraph{Returns only determined datatypes}
+
+All other data structures in Redis also follow the semantics similar to
+ "List or nothing" as \mintinline{text}{LLEN} has. Take the case of
+ \mintinline{text}{GET}, which has a similar semantics that should be typed:
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+get :: (KnownSymbol s, Serialize x, StringOrNX xs s)
+    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
+\end{minted}
+
+Since the key may not exist, we don't know what \mintinline{haskell}{x} would
+be. We could left \mintinline{haskell}{x} ambiguous, and let it be decided by
+ the caller. But users will then be forced to spell out the complete
+type signature of everything, including the dictionaries, only to specify
+the desired resulting type.
+
+Instead of allowing the key to be non-existent, we require that the key must
+ exist and it's associating type to be determined at compile time. So our
+ version of \mintinline{haskell}{get} has a stricter semantics:
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+get :: (KnownSymbol s, Serialize x
+     , Just (StringOf x) ~ Get xs s)
+    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
+\end{minted}
+
 \paragraph{Commands with multiple inputs or outputs}
+
+Some command may take a variable number of arguments as inputs, and returns more
+ than one value as outputs. To illustrate this, consider
+ \mintinline{haskell}{sinter} in \mintinline{haskell}{Hedis}:
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+Hedis.sinter :: [ByteString]                      -- keys
+             -> Redis (Either Reply [ByteString]) -- values
+\end{minted}
+
+In Hedis such command could easily be expressed with lists of
+ \mintinline{haskell}{ByteString}s. But in Edis, things escalate quickly, as
+ the keys and values will have to be expressed with heterogeneous
+ lists\cite{hetero}, which would be pratically infeasible, considering the cost,
+ if not impossible.
+
+Most importantly, the keys will all have to be constrained by
+ \mintinline{haskell}{KnownSymbol}, which enforces these type literals to be
+ concrete and known at compile time.
+ It's still unclear whether this is possible.
+
+So instead, we are offering commands that only has a single input and output.
+
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
+sinter :: ByteString                      -- single key
+       -> Redis (Either Reply ByteString) -- single value
+\end{minted}
+
 \paragraph{Redis Transactions}
+
+
+
 \section{Conclusion and Related Work}
 \paragraph{Acknowledgements}
 
