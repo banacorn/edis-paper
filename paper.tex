@@ -205,7 +205,7 @@ Left (Error "WRONGTYPE Operation against a
 \end{minted}
 
 \paragraph{The Cause} Every key is associated with a value, and every value has
- it's own type. But Most commands in Redis only work with a certain type of
+ it's own type. But most commands in Redis only work with a certain type of
  value. When a command is used on a wrong type of key, a runtime error occurs.
  The problems illustrated above arise from the absence of type checking, with
  respects to \textbf{the type of a value that associates with a key}.
@@ -220,8 +220,8 @@ Haskell makes it easy to build and use Domain Specific Languages (DSLs),
  it has \emph{variable bindings} (between keys and values), but with very
  little or no semantic checking, neither dynamically nor statically.
 
-We began with making Hedis a dynamically checked embedded DSL, and implemented a
- runtime type checker that keeps track of types of each variable. But then we
+We began with making Hedis a dynamically typechecked embedded DSL, and implemented a
+ runtime type checker that keeps track of types of all the variable. But then we
  found that things can be a lot easier, by leveraging the host language's type
  checker. We encode variable bindings with \emph{type-level lists} and
  \emph{strings}, and control the effects on the bindings with
@@ -270,18 +270,18 @@ To encode this in the type level, everything has to be
 
 Luckily, with recently added GHC extension \emph{data kinds}, suitable
  datatype will be automatically promoted to be a kind, and its value
- constructors to be type constructors.
+ constructors to be type constructors. The following type {\mintinline{haskell}{List}
 
 \begin{minted}[xleftmargin=1em]{haskell}
 data List a = Nil | Cons a (List a)
 \end{minted}
 
-Give rise to the following kinds and type constructors:\footnotemark\footnotemark
-
-\footnotetext{To distinguish between types and promoted constructors that have
+Give rise to the following kinds and type constructors:\footnote{To distinguish
+ between types and promoted constructors that have
  ambiguous names, prefix promoted constructor with a single quote like
  \mintinline{text}{'Nil} and \mintinline{text}{'Cons}}
-\footnotetext{All kinds have \emph{sort} BOX in Haskell\cite{sorts}}
+\footnote{All kinds have \emph{sort} BOX in Haskell\cite{sorts}}
+
 
 \begin{minted}[xleftmargin=1em]{haskell}
 List k :: BOX
@@ -605,7 +605,7 @@ But in the real world, raw binary strings are hardly useful, people would
  usually serialize their data into strings before storing them, and deserialize
  them back when in need.
 
-Instead of letting users writing these boilerplates, we will be doing these
+Instead of letting users writing these boilerplates, we can do these
  serializations/deserializations for them. With the help from
  \mintinline{text}{cereal}, a binary serialization library.
  \mintinline{text}{cereal} comes with these two functions:
@@ -712,7 +712,7 @@ redis> LLEN nonexistent
 \end{minted}
 
 In other words, we require that the key to be associated with a list,
- textbf{unless} it doesn't exist at all.
+ \textbf{unless} it doesn't exist at all.
 
 \subsection{Expressing constraint disjunctions}
 
@@ -757,7 +757,7 @@ The type expression above has kind \mintinline{haskell}{Bool}, we could make it
 (IsList (Get xs s) || Not (Member xs s)) ~ True
 \end{minted}
 
-With \emph{constraint kind}, a recent addition to GHC. Type constraints now has
+With \emph{constraint kind}, a recent addition to GHC, type constraints now has
  its own kind: \mintinline{haskell}{Constraint}. That means type constraints
  are not restricted to the left side of a \mintinline{haskell}{=>} anymore,
  they could appear in anywhere that accepts something of kind
@@ -920,16 +920,16 @@ Redis transactions are atomic in the sense that, all commands in a transaction
  a guarantee in the ordinary context, which may destroy the assertions we made
  in types.
 
-At the point of writing, transactions are not supported in our implementation.
+At this point of writing, transactions are not supported in our implementation.
  We are planning to add it in the future, and we are expecting that there
- wouldn't be much difficulties, since we've implemented a runtime type checker
+ wouldn't be much difficulty, since we've implemented a runtime type checker
  specifically targeting Redis transactions once, before we moved on to the
  types.
 
 \section{Related Work}
 
 While Redis can be viewed as a non-relational database system (although Redis
- seems reluctant to admit this in recent years), there also similar goals on
+ seems reluctant to admit this in recent years), there also are similar goals on
  relational database systems, trying to achieve a safer database interface by
  making them statically checked.
  \emph{HaskellDB}\cite{haskelldb, haskelldbimproved} expresses quires
@@ -945,8 +945,7 @@ With more and more extensions added to the language, Haskell is gradually
  but it's not that dreadful as many (including us) would have thought.
 
 \paragraph{Acknowledgements}
-This material is based upon work supported by Institute of Information Science,
-Academia Sinica under the Summer Internship Program of 2015.
+\footnote{Hidden for the purposes of double-blind reviewing}
 
 % references
 \bibliographystyle{abbrvnat}
