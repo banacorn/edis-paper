@@ -366,7 +366,7 @@ We define a new datatype \mintinline{haskell}{Popcorn}, which is basically just
  the context \mintinline{haskell}{Redis} indexed with more information in types.
  We make it an instance of \mintinline{haskell}{IMonad}.
 
-\begin{minted}[xleftmargin=1em]{haskell}
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 newtype Popcorn p q a = Popcorn { unPopcorn :: Redis a }
 
 instance IMonad Popcorn where
@@ -524,7 +524,7 @@ type family Member
 Now we could annotate the effects of a command in types. \mintinline{text}{DEL}
  removes a key from the current database, regardless of its type.
 
-\begin{minted}[xleftmargin=1em]{haskell}
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 del :: KnownSymbol s
     => Proxy s
     -> Popcorn xs (Del xs s) (Either Reply Integer)
@@ -538,7 +538,7 @@ del key = Popcorn $ Hedis.del (encodeKey key)
  \mintinline{haskell}{ByteString}.
 \footnotetext{They are defined in \mintinline{haskell}{GHC.TypeLits}.}
 
-\begin{minted}[xleftmargin=1em]{haskell}
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 encodeKey :: KnownSymbol s => Proxy s -> ByteString
 encodeKey = encode . symbolVal
 \end{minted}
@@ -576,8 +576,8 @@ Redis supports many different datatypes, these datatypes as can be viewed as
 
 \subsection{Denoting containers}
 Most Redis commands only work with a certain type of these containers. To
- annotate what container a key is associated with, we introduce these container
- types.
+ annotate what container a key is associated with, we introduce these types for
+ the universe of containers.
 
 \begin{minted}[xleftmargin=1em]{haskell}
 data Strings
@@ -664,9 +664,13 @@ incr :: (KnownSymbol s, Get xs s ~ Just (StringOf Integer))
      => Proxy s -> Popcorn xs xs (Either Reply Integer)
 incr key = Popcorn $ Hedis.incr (encodeKey key)
 
-incrbyfloat :: (KnownSymbol s, Get xs s ~ Just (StringOf Double))
-     => Proxy s -> Double -> Popcorn xs xs (Either Reply Double)
-incrbyfloat key n = Popcorn $ Hedis.incrbyfloat (encodeKey key) n
+incrbyfloat :: (KnownSymbol s
+    , Get xs s ~ Just (StringOf Double))
+    => Proxy s
+    -> Double
+    -> Popcorn xs xs (Either Reply Double)
+incrbyfloat key n =
+    Popcorn $ Hedis.incrbyfloat (encodeKey key) n
 \end{minted}
 
 \section{Imposing constraints}
@@ -693,10 +697,12 @@ Such constraint could be expressed in types with
 \emph{equality constraints}\cite{typeeq}.
 
 \begin{minted}[xleftmargin=1em]{haskell}
-llen :: (KnownSymbol s, Get xs s ~ Just (ListOf x))
-        => Proxy s
-        -> Popcorn xs xs (Either Reply Integer)
-llen key = Popcorn $ Hedis.llen (encodeKey key)
+llen :: (KnownSymbol s
+      , Get xs s ~ Just (ListOf x))
+     => Proxy s
+     -> Popcorn xs xs (Either Reply Integer)
+llen key =
+     Popcorn $ Hedis.llen (encodeKey key)
 \end{minted}
 
 Where \mintinline{haskell}{(~)} denotes that \mintinline{haskell}{Get xs s}
@@ -787,9 +793,9 @@ llen key = Popcorn $ Hedis.llen (encodeKey key)
 \section{Assertions}
 
 Users may need to make assertions about the status of some key-type bindings in
- a Redis program. For example, declaring the existence of a key and the type
- of its associating value. We provide these functions, which do nothing but
- fiddling with types.
+ a Redis program. Specifically, when declaring or renouncing the existence of
+ a key and the type of its associating value. We provide these functions,
+ which do nothing but fiddle with types.
 
 \begin{minted}[xleftmargin=1em]{haskell}
 declare :: (KnownSymbol s, Member xs s ~ False)
@@ -802,7 +808,7 @@ renounce :: (KnownSymbol s, Member xs s ~ True)
         => Proxy s -> Popcorn xs (Del xs s) ()
 renounce s = Popcorn $ return ()
 
--- empty precondition
+-- to be used at the beginning of a program
 start :: Popcorn ’[] ’[] ()
 start = Popcorn $ return ()
 \end{minted}
@@ -812,7 +818,7 @@ start = Popcorn $ return ()
 The following program increases the value of "A" as an integer, push the result
  of the increment to list "L", and then pops it out.
 
-\begin{minted}[xleftmargin=1em]{haskell}
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 main :: IO ()
 main = do
     conn <- connect defaultConnectInfo
@@ -833,9 +839,10 @@ The syntax is pretty heavy, like the old days when there's no
  between operations, we could compose these commands with a sequencing operator
  \mintinline{haskell}{(>>>)}.
 
-\begin{minted}[xleftmargin=1em]{haskell}
+\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 (>>>) :: IMonad m => m p q a -> m q r b -> m p r b
-
+\end{minted}
+\begin{minted}[xleftmargin=1em]{haskell}
 program = start
     >>> declare
             (Proxy :: Proxy "A")
@@ -849,13 +856,13 @@ program = start
 \paragraph{Syntax}
 No one could ignore the glaring shortcoming of the syntax, which occurs mainly
  in two places: \emph{symbol singletons} and \emph{indexed monad}. We are hoping
- that these issues could be solved with future syntactic extensions.
+ that these issues could be resolved with future syntactic extensions.
 
 \paragraph{Returns only determined datatypes}
 
 All other data structures in Redis also follow the semantics similar to
- "List or nothing" as \mintinline{text}{LLEN} has. Take the case of
- \mintinline{text}{GET}, which has a similar semantics that should be typed:
+ "List or nothing". Take the case of \mintinline{text}{GET}, which also shares a
+ "String or nothing" semantics that should be typed:
 
 \begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 get :: (KnownSymbol s, Serialize x, StringOrNX xs s)
@@ -882,7 +889,7 @@ get :: (KnownSymbol s, Serialize x
 
 Some command may take a variable number of arguments as inputs, and returns more
  than one value as outputs. To illustrate this, consider
- \mintinline{haskell}{sinter} in \mintinline{haskell}{Hedis}:
+ \mintinline{haskell}{sinter} in Hedis:
 
 \begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 Hedis.sinter :: [ByteString]                      -- keys
@@ -907,13 +914,13 @@ sinter :: ByteString                      -- single key
        -> Redis (Either Reply ByteString) -- single value
 \end{minted}
 
-Notice that \textbf{not all Hedis programs can be typechecked} (even if they
- might turn out to be type safe). We opted for type safety instead of
+\textbf{Not all Redis programs can be typechecked} (even if they
+ might turn out to be type safe). We opted for type safety rather than
  expressiveness.
 
 \paragraph{Redis Transactions}
 
-Redis also provides \emph{transactions}, another context for executing commands.
+Redis has \emph{transactions}, another context for executing commands.
 Redis transactions are atomic in the sense that, all commands in a transaction
  will executed sequentially, and no other requests issued by other clients will
  be served \textbf{in the middle}.\footnotemark In contrast, we cannot make such
@@ -939,7 +946,7 @@ While Redis can be viewed as a non-relational database system (although Redis
 
 \section{Conclusions}
 
-We have demonstrated how a DSL with variable-bindings could be embedded in types.
+We have demonstrated how a DSL with variable bindings could be embedded in types.
 With more and more extensions added to the language, Haskell is gradually
  becoming a dependently-typed language,\footnote{Why not be dependently typed? \url{http://stackoverflow.com/questions/12961651/why-not-be-dependently-typed}}
  but it's not that dreadful as many (including us) would have thought.
