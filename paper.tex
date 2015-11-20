@@ -79,8 +79,10 @@ In this paper, we demonstrate how to prevent those runtime errors at compile
  indexed monad, type-level literals and closed type families in Haskell.
 
 The database system and the package we are targeting are \emph{Redis} and
- \emph{Hedis} respectively, and our implementation is available as \emph{Edis}
+ \emph{Hedis} respectively, and our implementation is available as \emph{Popcorn}\footnotemark
  on \emph{Hackage}.
+
+\footnotetext{Popcorn, a temporary codename for the purposes of double-blind reviewing}
 
 \paragraph{Categories and Subject Descriptors}
 \paragraph{Keywords}
@@ -238,7 +240,7 @@ To summarize our contributions:
  an action in types, with indexed monad\cite{indexedmonad} and other language
  extensions such as closed type-families\cite{closedtypefamilies} and
  constraints kinds\cite{constraintskinds}.
-\item Edis, a package we built for programmers. This package helps programmers
+\item Popcorn, a package we built for programmers. This package helps programmers
  to write more reliable Redis programs, and also makes Redis polymorphic by
  automatically converting back and forth from values of arbitrary types and
  boring ByteStrings.
@@ -359,23 +361,23 @@ Class \mintinline{haskell}{IMonad} comes with two operations:
  \mintinline{haskell}{unit} for identities and \mintinline{haskell}{bind} for
  compositions, as in monads.
 
-We define a new datatype \mintinline{haskell}{Edis}, which is basically just
+We define a new datatype \mintinline{haskell}{Popcorn}, which is basically just
  the context \mintinline{haskell}{Redis} indexed with more information in types.
  We make it an instance of \mintinline{haskell}{IMonad}.
 
 \begin{minted}[xleftmargin=1em]{haskell}
-newtype Edis p q a = Edis { unEdis :: Redis a }
+newtype Popcorn p q a = Popcorn { unPopcorn :: Redis a }
 
-instance IMonad Edis where
-    unit = Edis . return
-    bind m f = Edis (unEdis m >>= unEdis . f )
+instance IMonad Popcorn where
+    unit = Popcorn . return
+    bind m f = Popcorn (unPopcorn m >>= unPopcorn . f )
 \end{minted}
 
-The first and second argument of type \mintinline{haskell}{Edis} is where the
+The first and second argument of type \mintinline{haskell}{Popcorn} is where the
 dictionaries going to stay.
 
-To execute a \mintinline{haskell}{Edis} program, simply apply it to
- \mintinline{haskell}{unEdis} to get an ordinary program of type
+To execute a \mintinline{haskell}{Popcorn} program, simply apply it to
+ \mintinline{haskell}{unPopcorn} to get an ordinary program of type
  \mintinline{haskell}{Redis}, with type information erased.
 
 \subsection{\mintinline{text}{PING}: the first attempt}
@@ -388,15 +390,15 @@ In Redis, \mintinline{text}{PING} does nothing but replies with
 ping :: Redis (Either Reply Status)
 \end{minted}
 
-Now we have \mintinline{haskell}{Edis}, let's make our own version of
+Now we have \mintinline{haskell}{Popcorn}, let's make our own version of
 \mintinline{haskell}{ping}\footnotemark
 
 \footnotetext{\mintinline{haskell}{ping} from Hedis is qualified with
 \mintinline{haskell}{Hedis} to prevent function name clashing in our code.}
 
 \begin{minted}[xleftmargin=1em]{haskell}
-ping :: Edis xs xs (Either Reply Status)
-ping = Edis Hedis.ping
+ping :: Popcorn xs xs (Either Reply Status)
+ping = Popcorn Hedis.ping
 \end{minted}
 
 The dictionary \mintinline{haskell}{xs} in the type remains unaffected after the
@@ -524,8 +526,8 @@ Now we could annotate the effects of a command in types. \mintinline{text}{DEL}
 \begin{minted}[xleftmargin=1em]{haskell}
 del :: KnownSymbol s
     => Proxy s
-    -> Edis xs (Del xs s) (Either Reply Integer)
-del key = Edis $ Hedis.del (encodeKey key)
+    -> Popcorn xs (Del xs s) (Either Reply Integer)
+del key = Popcorn $ Hedis.del (encodeKey key)
 \end{minted}
 
 \mintinline{haskell}{KnownSymbol} is a class that gives the string associated
@@ -590,8 +592,8 @@ data Sets
 set :: KnownSymbol s
     => Proxy s
     -> ByteString       -- data to store
-    -> Edis xs (Set xs s Strings) (Either Reply Status)
-set key val = Edis $ Hedis.set (encodeKey key) val
+    -> Popcorn xs (Set xs s Strings) (Either Reply Status)
+set key val = Popcorn $ Hedis.set (encodeKey key) val
 \end{minted}
 
 After \mintinline{text}{SET}, the key will be associated with
@@ -639,8 +641,8 @@ data SetOf x
 set :: (KnownSymbol s, Serialize x)
     => Proxy s
     -> x       -- can be anything, as long as it's serializable
-    -> Edis xs (Set xs s (StringOf x)) (Either Reply Status)
-set key val = Edis $ Hedis.set (encodeKey key) (encode val)
+    -> Popcorn xs (Set xs s (StringOf x)) (Either Reply Status)
+set key val = Popcorn $ Hedis.set (encodeKey key) (encode val)
 \end{minted}
 
 For example, if we execute \mintinline{haskell}{set (Proxy :: Proxy "A") True},
@@ -658,12 +660,12 @@ We could handle this by mapping Redis's strings of integers and floats to
 
 \begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 incr :: (KnownSymbol s, Get xs s ~ Just (StringOf Integer))
-     => Proxy s -> Edis xs xs (Either Reply Integer)
-incr key = Edis $ Hedis.incr (encodeKey key)
+     => Proxy s -> Popcorn xs xs (Either Reply Integer)
+incr key = Popcorn $ Hedis.incr (encodeKey key)
 
 incrbyfloat :: (KnownSymbol s, Get xs s ~ Just (StringOf Double))
-     => Proxy s -> Double -> Edis xs xs (Either Reply Double)
-incrbyfloat key n = Edis $ Hedis.incrbyfloat (encodeKey key) n
+     => Proxy s -> Double -> Popcorn xs xs (Either Reply Double)
+incrbyfloat key n = Popcorn $ Hedis.incrbyfloat (encodeKey key) n
 \end{minted}
 
 \section{Imposing constraints}
@@ -692,8 +694,8 @@ Such constraint could be expressed in types with
 \begin{minted}[xleftmargin=1em]{haskell}
 llen :: (KnownSymbol s, Get xs s ~ Just (ListOf x))
         => Proxy s
-        -> Edis xs xs (Either Reply Integer)
-llen key = Edis $ Hedis.llen (encodeKey key)
+        -> Popcorn xs xs (Either Reply Integer)
+llen key = Popcorn $ Hedis.llen (encodeKey key)
 \end{minted}
 
 Where \mintinline{haskell}{(~)} denotes that \mintinline{haskell}{Get xs s}
@@ -777,8 +779,8 @@ The complete implementation of \mintinline{text}{LLEN} with
 \begin{minted}[xleftmargin=1em]{haskell}
 llen :: (KnownSymbol s, ListOrNX xs s)
         => Proxy s
-        -> Edis xs xs (Either Reply Integer)
-llen key = Edis $ Hedis.llen (encodeKey key)
+        -> Popcorn xs xs (Either Reply Integer)
+llen key = Popcorn $ Hedis.llen (encodeKey key)
 \end{minted}
 
 \section{Assertions}
@@ -792,16 +794,16 @@ Users may need to make assertions about the status of some key-type bindings in
 declare :: (KnownSymbol s, Member xs s ~ False)
         => Proxy s
         -> Proxy x  -- type of value
-        -> Edis xs (Set xs s x) ()
-declare s x = Edis $ return ()
+        -> Popcorn xs (Set xs s x) ()
+declare s x = Popcorn $ return ()
 
 renounce :: (KnownSymbol s, Member xs s ~ True)
-        => Proxy s -> Edis xs (Del xs s) ()
-renounce s = Edis $ return ()
+        => Proxy s -> Popcorn xs (Del xs s) ()
+renounce s = Popcorn $ return ()
 
 -- empty precondition
-start :: Edis ’[] ’[] ()
-start = Edis $ return ()
+start :: Popcorn ’[] ’[] ()
+start = Popcorn $ return ()
 \end{minted}
 
 \subsection{A complete example}
@@ -813,7 +815,7 @@ The following program increases the value of "A" as an integer, push the result
 main :: IO ()
 main = do
     conn <- connect defaultConnectInfo
-    result <- runRedis conn $ unEdis $ start
+    result <- runRedis conn $ unPopcorn $ start
         `bind` \_ ->  declare
                         (Proxy :: Proxy "A")
                         (Proxy :: Proxy Integer)
@@ -856,7 +858,7 @@ All other data structures in Redis also follow the semantics similar to
 
 \begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 get :: (KnownSymbol s, Serialize x, StringOrNX xs s)
-    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
+    => Proxy s -> Popcorn xs xs (Either Reply (Maybe x))
 \end{minted}
 
 Since the key may not exist, we don't know what \mintinline{haskell}{x} would
@@ -872,7 +874,7 @@ Instead of allowing the key to be non-existent, we require that the key must
 \begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
 get :: (KnownSymbol s, Serialize x
      , Just (StringOf x) ~ Get xs s)
-    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
+    => Proxy s -> Popcorn xs xs (Either Reply (Maybe x))
 \end{minted}
 
 \paragraph{Commands with multiple inputs or outputs}
@@ -887,7 +889,7 @@ Hedis.sinter :: [ByteString]                      -- keys
 \end{minted}
 
 In Hedis such command could easily be expressed with lists of
- \mintinline{haskell}{ByteString}s. But in Edis, things escalate quickly, as
+ \mintinline{haskell}{ByteString}s. But in Popcorn, things escalate quickly, as
  the keys and values will have to be expressed with \emph{heterogeneous
  lists}\cite{hetero}, which would be pratically infeasible, considering the cost,
  if not impossible.
