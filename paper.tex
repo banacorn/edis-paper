@@ -45,9 +45,11 @@
 \usepackage{hyperref}
 
 
+\newcommand{\todo}[2]{{\bf [#1]}: #2}
+
 \begin{document}
 
-\title{Preventing runtime errors of Redis at compile time}
+\title{Preventing Runtime Errors of Redis at Compile Time}
 
 %
 % any author declaration will be ignored  when using 'pldi' option (for double blind review)
@@ -66,9 +68,8 @@
 \maketitle
 
 \begin{abstract}
-Programmers often interact with database systems, by sending queries through
- libraries or packages in some programming languages. But people make mistakes,
- while some of the syntactic and semantic errors can be prevented by the
+Programmers often interact with database systems by sending queries through libraries or packages in some programming languages. People, however, make mistakes.
+While some of the syntactic and semantic errors can be prevented by the
  language at compile time, or caught by the package at runtime, most semantic
  errors are just being ignored, causing problems at the database system.
 
@@ -90,18 +91,14 @@ Haskell; type-level programming; database query language; Redis;
 
 \subsection{Redis}
 
-Redis is an open source, in-memory data structure store, used as
- database, cache and message broker. Each value is associated with a binary-safe
- string key to identify and manipulate with. Redis supports many different
- kind of values, such as strings, hashes, lists, sets, etc.
+\todo{scm}{Cite some references for Redis?}
 
-To manipulate these values, Redis comes with a set of atomic operations, called
- \emph{commands}.
+Redis is an open source, in-memory data structure store, often used as
+database, cache and message broker. A Redis datatype can be think of as a set of key-value pairs, where each value is associated with a binary-safe string key to identify and manipulate with. Redis supports many different kind of values, such as strings, hashes, lists, and sets, etc, and provides a collection of of atomic \emph{commands} to manipulate these values.
 
-For example, if we want to add a bunch of strings to 2 sets, and intersect them,
- we could input the following sequence of commands into Redis's client
- interactively.
-
+For an example, consider the following sequence of commands, entered through the interactive interface of Redis. The keys
+\mintinline{text}{some-set} abd \mintinline{text}{another-set} are
+both associated to a set. The two call to command \mintinline{text}{SADD} respectively adds three and two values to the two sets, before \mintinline{text}{SINTER} takes their intersection:
 \begin{minted}[xleftmargin=1em]{text}
 redis> SADD some-set a b c
 (integer) 3
@@ -112,17 +109,20 @@ redis> SINTER some-set another-set
 2) "b"
 \end{minted}
 
-Keys such as \mintinline{text}{some-set} and \mintinline{text}{another-set}
- are created on site, with the command \mintinline{text}{SADD}, which returns
- the size of set after completed.
+Note that the keys \mintinline{text}{some-set} and \mintinline{text}{another-set}, if not existing before the call to \mintinline{text}{SADD}, are created on site. The call to
+\mintinline{text}{SADD} returns the size of the set after
+completion of the command.
 
 \subsection{Hedis}
-Redis can also be used in most programming languages, with 3rd party libraries
- or packages that talk with Redis' TCP protocol. In Haskell, the most popular
- package is Hedis.
 
-The previous example in Redis's client would look something like this with
- Hedis in Haskell.
+Many third party library exist to allow general purpose programmings
+to access Redis databases through its TCP protocol. The most popular
+such library for Haskell is Hedis.
+%
+\todo{scm}{Citation for Hedis?}
+%
+The following program is how the previous example looks like in
+Hedis:
 
 \begin{minted}[xleftmargin=1em]{haskell}
 program :: Redis (Either Reply [ByteString])
@@ -132,10 +132,11 @@ program = do
     sinter ["some-set", "another-set"]
 \end{minted}
 
-\mintinline{haskell}{sadd} takes a key and a list of values as arguments, and
+The function \mintinline{haskell}{sadd} takes a key and a list of values as arguments, and
  returns an \mintinline{haskell}{Integer}, wrapped in
  \mintinline{haskell}{Either} to indicate possible failures in the context
  \mintinline{haskell}{Redis}\footnotemark of command execution.
+\todo{scm}{Explain Reply in one sentence?}
 
 \begin{minted}[xleftmargin=1em]{haskell}
 sadd :: ByteString      -- key
@@ -143,28 +144,30 @@ sadd :: ByteString      -- key
     -> Redis (Either Reply Integer)
 \end{minted}
 
-Keys and values are of type \mintinline{haskell}{ByteString}, since they are all
- just binary strings in Redis. If a user wants to store values of
- arbitrary types, he or she will have to encode and decode them as
- \mintinline{haskell}{ByteString}s.
+Note that keys and values, being nothing but binary strings in Redis,
+are represented using Haskell \mintinline{haskell}{ByteString}.
+Values of other types must be encoded as \mintinline{haskell}{ByteString}s before being written to the database,
+and decoded after being read back.
 
-\footnotetext{Hedis provides another kind of context, \mintinline{haskell}{RedisTx}, for \emph{transactions}, united with \mintinline{haskell}{Redis} under the class of \mintinline{haskell}{RedisCtx}. We are demonstrating \mintinline{haskell}{Redis} only for brevity. }
+\footnotetext{Hedis provides another kind of context, \mintinline{haskell}{RedisTx}, for \emph{transactions}, united with \mintinline{haskell}{Redis} under the class of \mintinline{haskell}{RedisCtx}. For brevity, we demonstrate only \mintinline{haskell}{Redis} in this paper. }
 
 \section{Motivation}
 
 \say{All binary strings are equal, but some binary strings are more equal than others.}
 
-Although everything in Redis is essentially a binary string, these strings are
- treated differently. Redis supports many different kind of data structures,
- such as strings, hashes, lists, etc. These values have different datatypes,
- and most commands only work with certain types of them, much like how C
- language treats a piece of data.
+\todo{scm}{Is this a quote? If so please cite the source. If not,
+we shouldn't use the double quotes.}
 
-\paragraph{Problem 1} Consider the following case. \mintinline{text}{SET} is
- a command that only works with strings, it associates the key
- \mintinline{text}{some-string} with a value of string. If we treat the like a
- set and add an element to it with \mintinline{text}{SADD}, a runtime error
- arises.
+Although everything in Redis is essentially a binary string, these strings are treated differently. Redis supports many different
+kind of data structures, such as strings, hashes, lists, etc. While
+they are all encoded as binary strings before being written to the databse, most commands, much like how the C language treats a piece of data, only works with data of certain types.
+
+\paragraph{Problem 1} The command \mintinline{text}{SET}, by
+its definition, associates a key to a string. In the following
+example, the key \mintinline{text}{some-string} is associated
+to string \mintinline{text}{foo}. Subsequent calls to
+\mintinline{text}{SADD} causes runtime errors, since the value
+of \mintinline{text}{some-string} is not a set, but a string.
 
 \begin{minted}[xleftmargin=1em]{text}
 redis> SET some-string foo
@@ -175,9 +178,11 @@ redis> SADD some-string bar
 \end{minted}
 
 \paragraph{Problem 2} Even worse, not all strings are equal!
- \mintinline{text}{INCR} parses the string value as an integer, increments it by
- one, and store it back as a string. If a string value can't be parse as an
- integer, another runtime error arises
+The call \mintinline{text}{INCR some-string} parses the string
+associated with key \mintinline{text}{some-string}
+to an integer, increments it by one, and store it back as a string.
+If the string can not be parse as an integer, a runtime error
+is raised.
 
 \begin{minted}[xleftmargin=1em]{text}
 redis> SET some-string foo
@@ -187,8 +192,10 @@ redis> INCR some-string
  of range
 \end{minted}
 
-\paragraph{In Hedis} The same goes for Hedis, since it's only a simple wrapping
- on top of Redis's protocol written in Haskell.
+\paragraph{In Hedis} Hedis, being only a simple wrapper on top
+of the TCP protocol of Redis, inherits all the problems mentioned
+above. The following program yields the same error as that in
+the Redis client.
 
 \begin{minted}[xleftmargin=1em]{haskell}
 program :: Redis (Either Reply Integer)
@@ -196,9 +203,6 @@ program = do
     set "some-string" "foo"
     sadd "some-string" ["a"]
 \end{minted}
-
-It yields the same error as in Redis's client.
-
 \begin{minted}[xleftmargin=1em]{haskell}
 Left (Error "WRONGTYPE Operation against a
  key holding the wrong kind of value")
@@ -206,6 +210,8 @@ Left (Error "WRONGTYPE Operation against a
 
 \paragraph{The Cause} These problems arise from the absence of type checking,
  with respects to \textbf{the type of a value that associates with a key}.
+
+\todo{scm}{say a bit more.}
 
 \subsection{Hedis as an embedded DSL}
 
@@ -911,8 +917,6 @@ At the point of writing, transactions are not supported in our implementation.
  wouldn't be much difficulties, since we've implemented a runtime type checker
  specifically targeting Redis transactions once, before we moved on to the
  types.
-
-\footnotetext{\url{http://redis.io/topics/transactions}}
 
 \section{Related Work}
 
