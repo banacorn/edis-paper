@@ -216,10 +216,18 @@ Haskell makes it easy to build and use Domain Specific Languages (DSLs),
  it has \emph{variable bindings} (between keys and values), but with very
  little or no semantic checking, neither dynamically nor statically.
 
-We began with making Hedis a dynamically checked embedded DSL, and implemented a
- runtime type checker that keeps track of everything. But then we found that
- things can be a lot easier, by leveraging the host language's type checker,
- which also make it statically type-checked!
+\todo{scm}{Is this a good thing? Being ``special'' sounds positive.}
+
+We began with making Hedis a dynamically checked embedded DSL, and implemented a runtime type checker that keeps track of types of
+each variable. But then we found that things can be a lot easier,
+by leveraging the host language's type checker,
+which also make it statically type-checked!
+
+\todo{scm}{Elaborate on how the latter approach is easier.}
+\todo{scm}{Briefly summarise the approach you use. E.g, ``monadish'',
+type of variables are recorded in a list, type level list, etc, such
+that readers familiar with the topic will have a rough idea even
+without reading on.}
 
 \subsection{Contributions}
 
@@ -239,7 +247,15 @@ To summarize our contributions:
  boring ByteStrings.
 \end{itemize}
 
+\todo{scm}{I think we have to somehow mention that
+not all Hedis programs can be typechecked (even if they might
+turn out to be type safe), as a cost of static type checking.}
+
 \section{Type-level dictionaries}
+
+\todo{scm}{At this point the readers should have some idea
+what we are going to do, thus the readers is motivated to
+use type-level lists.}
 
 To check the bindings between keys and values, we need a \emph{dictionary-like}
  structure, and encode it as a \emph{type} somehow.
