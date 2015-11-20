@@ -84,9 +84,10 @@ The database system and the package we are targeting are \emph{Redis} and
 
 \footnotetext{Popcorn, a temporary codename for the purposes of double-blind reviewing}
 
-\paragraph{Categories and Subject Descriptors}
-\paragraph{Keywords}
-Haskell; type-level programming; database query language; Redis;
+\category{D.3.3}{Programming Languages}{Language Constructs and Features}
+\category{F.3.1}{Specifying and Verifying and Reasoning about Programs}{Specification techniques}
+\category{H.2.3}{Database Management}{Languages}
+\keywords{Haskell; type families; type-level literals; indexed monad; Redis; database query language}
 \end{abstract}
 
 \section{Introduction}
@@ -133,7 +134,7 @@ program = do
 The function \mintinline{haskell}{sadd} takes a key and a list of values as
  arguments, and returns an \mintinline{haskell}{Integer} on success, or
  returns a \mintinline{haskell}{Reply}, a low-level representation of replies
- from the Redis server, in case of failues. All wrapped in
+ from the Redis server, in case of failures. All wrapped in
  \mintinline{haskell}{Redis}\footnotemark, the context of command execution.
 
 \begin{minted}[xleftmargin=1em]{haskell}
@@ -346,7 +347,7 @@ Redis commands are \emph{actions}.
 
 \emph{Indexed monads} (or \emph{monadish},
  \emph{parameterised monad})\cite{indexedmonad}
- can be used\cite{typefun}\cite{staticresources} to model such preconditions and
+ can be used\cite{typefun, staticresources} to model such preconditions and
  postconditions in types. An indexed monad is a type constructor that takes
  three arguments: an initial state, a final state, and the type of a value that
  an action computes, which can be read like a Hoare triple\cite{kleisli}.
@@ -410,7 +411,7 @@ The dictionary \mintinline{haskell}{xs} in the type remains unaffected after the
 \subsection{Closed type families}
 
 Type families have a wide variety of applications. They can appear inside type
- classes\cite{tfclass}\cite{tfsynonym}, or at toplevel. Toplevel type families
+ classes\cite{tfclass, tfsynonym}, or at toplevel. Toplevel type families
  can be used to compute over types, they come in two forms: open\cite{tfopen}
  and closed \cite{tfclosed}.
 
@@ -542,10 +543,10 @@ encodeKey :: KnownSymbol s => Proxy s -> ByteString
 encodeKey = encode . symbolVal
 \end{minted}
 
-Since Haskell has a \emph{phase distinction}\cite{phasedistinction}, types are
+Since Haskell has a \emph{phase distinction, phasedistinction}, types are
  erased before runtime. It's impossible to obtain information directly from
  types, we can only do this indirectly, with
- \emph{singleton types}\cite{singletons}.
+ \emph{singleton types, singletons}.
 
 A singleton type is a type that has only one instance, and the instance can be
  think of as the representative of the type at the realm of runtime values.
@@ -913,7 +914,7 @@ Notice that \textbf{not all Hedis programs can be typechecked} (even if they
 \paragraph{Redis Transactions}
 
 Redis also provides \emph{transactions}, another context for executing commands.
-Redis trasanctions are atomic in the sense that, all commands in a transaction
+Redis transactions are atomic in the sense that, all commands in a transaction
  will executed sequentially, and no other requests issued by other clients will
  be served \textbf{in the middle}.\footnotemark In contrast, we cannot make such
  a guarantee in the ordinary context, which may destroy the assertions we made
@@ -931,7 +932,7 @@ While Redis can be viewed as a non-relational database system (although Redis
  seems reluctant to admit this in recent years), there also similar goals on
  relational database systems, trying to achieve a safer database interface by
  making them statically checked.
- \emph{HaskellDB}\cite{haskelldb}\cite{haskelldbimproved} expresses quries
+ \emph{HaskellDB}\cite{haskelldb, haskelldbimproved} expresses quires
  with relational algebra-like combinators, wrapped in phantom types. Or as
  examples, at first to demonstrate the power of dependent types in
  Agda\cite{pi}, and then with singletons in Haskell\cite{singletons}.
