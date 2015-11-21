@@ -366,32 +366,34 @@ We define a new datatype \mintinline{haskell}{Popcorn}, which is basically just
  the context \mintinline{haskell}{Redis} indexed with more information in types.
  We make it an instance of \mintinline{haskell}{IMonad}.
 
-\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
-newtype Popcorn p q a = Popcorn { unPopcorn :: Redis a }
+\begin{minted}[xleftmargin=1em]{haskell}
+newtype Popcorn p q a =
+    Popcorn { unPopcorn :: Redis a }
 
 instance IMonad Popcorn where
     unit = Popcorn . return
-    bind m f = Popcorn (unPopcorn m >>= unPopcorn . f )
+    bind m f =
+        Popcorn (unPopcorn m >>= unPopcorn . f )
 \end{minted}
 
 The first and second argument of type \mintinline{haskell}{Popcorn} is where the
-dictionaries going to stay.
+dictionaries going to be.
 
 To execute a \mintinline{haskell}{Popcorn} program, simply apply it to
- \mintinline{haskell}{unPopcorn} to get an ordinary program of type
- \mintinline{haskell}{Redis}, with type information erased.
+ \mintinline{haskell}{unPopcorn} to get an ordinary Hedis program back,
+ with type information erased.
 
 \subsection{\mintinline{text}{PING}: the first attempt}
 
 In Redis, \mintinline{text}{PING} does nothing but replies with
  \mintinline{text}{PONG} if the connection is alive. In Hedis,
- \mintinline{text}{PING} has type:
+ \mintinline{haskell}{ping} has type:
 
 \begin{minted}[xleftmargin=1em]{haskell}
 ping :: Redis (Either Reply Status)
 \end{minted}
 
-Now we have \mintinline{haskell}{Popcorn}, let's make our own version of
+Now with \mintinline{haskell}{Popcorn}, we could make our own version of
 \mintinline{haskell}{ping}\footnotemark
 
 \footnotetext{\mintinline{haskell}{ping} from Hedis is qualified with
@@ -403,8 +405,8 @@ ping = Popcorn Hedis.ping
 \end{minted}
 
 The dictionary \mintinline{haskell}{xs} in the type remains unaffected after the
- action, because \mintinline{haskell}{ping} does not affect any key-value
- bindings. To encode other commands that modifies key-value bindings, we need
+ action, because \mintinline{haskell}{ping} does not affect any key-type
+ bindings. To encode other commands that modifies key-type bindings, we need
  type-level functions to annotate those effects on the dictionary.
 
 \section{Type-level functions}
@@ -654,18 +656,20 @@ For example, if we execute \mintinline{haskell}{set (Proxy :: Proxy "A") True},
 
 Commands such as \mintinline{text}{INCR} and \mintinline{text}{INCRBYFLOAT}, are
  not only container-specific, they also have some requirements on what types of
- value they could operate on.
+ value they could operate with.
 
 We could handle this by mapping Redis's strings of integers and floats to
  Haskell's \mintinline{text}{Integer} and \mintinline{text}{Double}.
 
-\begin{minted}[xleftmargin=1em,fontsize=\footnotesize]{haskell}
-incr :: (KnownSymbol s, Get xs s ~ Just (StringOf Integer))
-     => Proxy s -> Popcorn xs xs (Either Reply Integer)
+\begin{minted}[xleftmargin=1em]{haskell}
+incr :: (KnownSymbol s
+      , Get xs s ~ Just (StringOf Integer))
+     => Proxy s
+     -> Popcorn xs xs (Either Reply Integer)
 incr key = Popcorn $ Hedis.incr (encodeKey key)
 
 incrbyfloat :: (KnownSymbol s
-    , Get xs s ~ Just (StringOf Double))
+     , Get xs s ~ Just (StringOf Double))
     => Proxy s
     -> Double
     -> Popcorn xs xs (Either Reply Double)
