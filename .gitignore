@@ -16,3 +16,7 @@ dump.rdb
 references.md
 paper.mintedcmd
 paper.pyg
+*.dvi
+*.pdf
+*.ptb
+

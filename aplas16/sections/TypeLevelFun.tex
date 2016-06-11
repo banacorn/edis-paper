@@ -1,0 +1,581 @@
+%% ODER: format ==         = "\mathrel{==}"
+%% ODER: format /=         = "\neq "
+%
+%
+\makeatletter
+\@ifundefined{lhs2tex.lhs2tex.sty.read}%
+  {\@namedef{lhs2tex.lhs2tex.sty.read}{}%
+   \newcommand\SkipToFmtEnd{}%
+   \newcommand\EndFmtInput{}%
+   \long\def\SkipToFmtEnd#1\EndFmtInput{}%
+  }\SkipToFmtEnd
+
+\newcommand\ReadOnlyOnce[1]{\@ifundefined{#1}{\@namedef{#1}{}}\SkipToFmtEnd}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\DeclareFontFamily{OT1}{cmtex}{}
+\DeclareFontShape{OT1}{cmtex}{m}{n}
+  {<5><6><7><8>cmtex8
+   <9>cmtex9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmtex10}{}
+\DeclareFontShape{OT1}{cmtex}{m}{it}
+  {<-> ssub * cmtt/m/it}{}
+\newcommand{\texfamily}{\fontfamily{cmtex}\selectfont}
+\DeclareFontShape{OT1}{cmtt}{bx}{n}
+  {<5><6><7><8>cmtt8
+   <9>cmbtt9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmbtt10}{}
+\DeclareFontShape{OT1}{cmtex}{bx}{n}
+  {<-> ssub * cmtt/bx/n}{}
+\newcommand{\tex}[1]{\text{\texfamily#1}}	% NEU
+
+\newcommand{\Sp}{\hskip.33334em\relax}
+
+
+\newcommand{\Conid}[1]{\mathit{#1}}
+\newcommand{\Varid}[1]{\mathit{#1}}
+\newcommand{\anonymous}{\kern0.06em \vbox{\hrule\@width.5em}}
+\newcommand{\plus}{\mathbin{+\!\!\!+}}
+\newcommand{\bind}{\mathbin{>\!\!\!>\mkern-6.7mu=}}
+\newcommand{\rbind}{\mathbin{=\mkern-6.7mu<\!\!\!<}}% suggested by Neil Mitchell
+\newcommand{\sequ}{\mathbin{>\!\!\!>}}
+\renewcommand{\leq}{\leqslant}
+\renewcommand{\geq}{\geqslant}
+\usepackage{polytable}
+
+%mathindent has to be defined
+\@ifundefined{mathindent}%
+  {\newdimen\mathindent\mathindent\leftmargini}%
+  {}%
+
+\def\resethooks{%
+  \global\let\SaveRestoreHook\empty
+  \global\let\ColumnHook\empty}
+\newcommand*{\savecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\savecolumns[#1]}}
+\newcommand*{\restorecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\restorecolumns[#1]}}
+\newcommand*{\aligncolumn}[2]%
+  {\g@addto@macro\ColumnHook{\column{#1}{#2}}}
+
+\resethooks
+
+\newcommand{\onelinecommentchars}{\quad-{}- }
+\newcommand{\commentbeginchars}{\enskip\{-}
+\newcommand{\commentendchars}{-\}\enskip}
+
+\newcommand{\visiblecomments}{%
+  \let\onelinecomment=\onelinecommentchars
+  \let\commentbegin=\commentbeginchars
+  \let\commentend=\commentendchars}
+
+\newcommand{\invisiblecomments}{%
+  \let\onelinecomment=\empty
+  \let\commentbegin=\empty
+  \let\commentend=\empty}
+
+\visiblecomments
+
+\newlength{\blanklineskip}
+\setlength{\blanklineskip}{0.66084ex}
+
+\newcommand{\hsindent}[1]{\quad}% default is fixed indentation
+\let\hspre\empty
+\let\hspost\empty
+\newcommand{\NB}{\textbf{NB}}
+\newcommand{\Todo}[1]{$\langle$\textbf{To do:}~#1$\rangle$}
+
+\EndFmtInput
+\makeatother
+%
+%
+%
+%
+%
+%
+% This package provides two environments suitable to take the place
+% of hscode, called "plainhscode" and "arrayhscode". 
+%
+% The plain environment surrounds each code block by vertical space,
+% and it uses \abovedisplayskip and \belowdisplayskip to get spacing
+% similar to formulas. Note that if these dimensions are changed,
+% the spacing around displayed math formulas changes as well.
+% All code is indented using \leftskip.
+%
+% Changed 19.08.2004 to reflect changes in colorcode. Should work with
+% CodeGroup.sty.
+%
+\ReadOnlyOnce{polycode.fmt}%
+\makeatletter
+
+\newcommand{\hsnewpar}[1]%
+  {{\parskip=0pt\parindent=0pt\par\vskip #1\noindent}}
+
+% can be used, for instance, to redefine the code size, by setting the
+% command to \small or something alike
+\newcommand{\hscodestyle}{}
+
+% The command \sethscode can be used to switch the code formatting
+% behaviour by mapping the hscode environment in the subst directive
+% to a new LaTeX environment.
+
+\newcommand{\sethscode}[1]%
+  {\expandafter\let\expandafter\hscode\csname #1\endcsname
+   \expandafter\let\expandafter\endhscode\csname end#1\endcsname}
+
+% "compatibility" mode restores the non-polycode.fmt layout.
+
+\newenvironment{compathscode}%
+  {\par\noindent
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed\)%
+   \par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\compaths}{\sethscode{compathscode}}
+
+% "plain" mode is the proposed default.
+% It should now work with \centering.
+% This required some changes. The old version
+% is still available for reference as oldplainhscode.
+
+\newenvironment{plainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newenvironment{oldplainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+% Here, we make plainhscode the default environment.
+
+\newcommand{\plainhs}{\sethscode{plainhscode}}
+\newcommand{\oldplainhs}{\sethscode{oldplainhscode}}
+\plainhs
+
+% The arrayhscode is like plain, but makes use of polytable's
+% parray environment which disallows page breaks in code blocks.
+
+\newenvironment{arrayhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\parray}%
+  {\endparray\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newcommand{\arrayhs}{\sethscode{arrayhscode}}
+
+% The mathhscode environment also makes use of polytable's parray 
+% environment. It is supposed to be used only inside math mode 
+% (I used it to typeset the type rules in my thesis).
+
+\newenvironment{mathhscode}%
+  {\parray}{\endparray}
+
+\newcommand{\mathhs}{\sethscode{mathhscode}}
+
+% texths is similar to mathhs, but works in text mode.
+
+\newenvironment{texthscode}%
+  {\(\parray}{\endparray\)}
+
+\newcommand{\texths}{\sethscode{texthscode}}
+
+% The framed environment places code in a framed box.
+
+\def\codeframewidth{\arrayrulewidth}
+\RequirePackage{calc}
+
+\newenvironment{framedhscode}%
+  {\parskip=\abovedisplayskip\par\noindent
+   \hscodestyle
+   \arrayrulewidth=\codeframewidth
+   \tabular{@{}|p{\linewidth-2\arraycolsep-2\arrayrulewidth-2pt}|@{}}%
+   \hline\framedhslinecorrect\\{-1.5ex}%
+   \let\endoflinesave=\\
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \framedhslinecorrect\endoflinesave{.5ex}\hline
+   \endtabular
+   \parskip=\belowdisplayskip\par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\framedhslinecorrect}[2]%
+  {#1[#2]}
+
+\newcommand{\framedhs}{\sethscode{framedhscode}}
+
+% The inlinehscode environment is an experimental environment
+% that can be used to typeset displayed code inline.
+
+\newenvironment{inlinehscode}%
+  {\(\def\column##1##2{}%
+   \let\>\undefined\let\<\undefined\let\\\undefined
+   \newcommand\>[1][]{}\newcommand\<[1][]{}\newcommand\\[1][]{}%
+   \def\fromto##1##2##3{##3}%
+   \def\nextline{}}{\) }%
+
+\newcommand{\inlinehs}{\sethscode{inlinehscode}}
+
+% The joincode environment is a separate environment that
+% can be used to surround and thereby connect multiple code
+% blocks.
+
+\newenvironment{joincode}%
+  {\let\orighscode=\hscode
+   \let\origendhscode=\endhscode
+   \def\endhscode{\def\hscode{\endgroup\def\@currenvir{hscode}\\}\begingroup}
+   %\let\SaveRestoreHook=\empty
+   %\let\ColumnHook=\empty
+   %\let\resethooks=\empty
+   \orighscode\def\hscode{\endgroup\def\@currenvir{hscode}}}%
+  {\origendhscode
+   \global\let\hscode=\orighscode
+   \global\let\endhscode=\origendhscode}%
+
+\makeatother
+\EndFmtInput
+%
+
+\ReadOnlyOnce{Formatting.fmt}%
+\makeatletter
+
+\let\Varid\mathit
+\let\Conid\mathsf
+
+\def\commentbegin{\quad\{\ }
+\def\commentend{\}}
+
+\newcommand{\ty}[1]{\Conid{#1}}
+\newcommand{\con}[1]{\Conid{#1}}
+\newcommand{\id}[1]{\Varid{#1}}
+\newcommand{\cl}[1]{\Varid{#1}}
+\newcommand{\opsym}[1]{\mathrel{#1}}
+
+\newcommand\Keyword[1]{\textbf{\textsf{#1}}}
+\newcommand\Hide{\mathbin{\downarrow}}
+\newcommand\Reveal{\mathbin{\uparrow}}
+
+
+%% Paper-specific keywords
+
+
+\makeatother
+\EndFmtInput
+
+\section{Type-level Functions}
+\label{sec:type-level-fun}
+
+\subsection{Closed Type Families}
+
+Type families have a wide variety of applications. They can appear inside type
+ classes\cite{tfclass,tfsynonym}, or at toplevel. Toplevel type families
+ can be used to compute over types, they come in two forms: open\cite{tfopen}
+ and closed \cite{tfclosed}.
+
+We choose \emph{closed type families}, because it allows overlapping instances,
+ and we need none of the extensibility provided by open type families.
+For example, consider both term-level and type-level \ensuremath{\mathrel{\wedge}}:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{6}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{14}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{19}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}(\mathrel{\wedge})\mathbin{::}\Conid{Bool}\to \Conid{Bool}\to \Conid{Bool}{}\<[E]%
+\\
+\>[B]{}\Conid{True}\mathrel{\wedge}\Conid{True}\mathrel{=}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\Varid{a}{}\<[6]%
+\>[6]{}\mathrel{\wedge}\Varid{b}{}\<[14]%
+\>[14]{}\mathrel{=}\Conid{False}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{And}\;(\Varid{a}\mathbin{::}\Conid{Bool})\;(\Varid{b}\mathbin{::}\Conid{Bool})\mathbin{::}\Conid{Bool}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{And}\;\Conid{True}\;\Conid{True}\mathrel{=}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{And}\;\Varid{a}\;{}\<[14]%
+\>[14]{}\Varid{b}{}\<[19]%
+\>[19]{}\mathrel{=}\Conid{False}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+The first instance of \ensuremath{\Conid{And}} could be subsumed under a more
+ general instance, \ensuremath{\Conid{And}\;\Varid{a}\;\Varid{b}}.
+But the closedness allows these instances to be resolved in order, just like
+ how cases are resolved in term-level functions. Also notice that how much
+ \ensuremath{\Conid{And}} resembles to it's term-level sibling.
+
+\subsection{Functions on Type-Level Dictionaries}
+
+With closed type families, we could define functions on the type level.
+ Let's begin with dictionary lookup.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Get}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  dictionary}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{s}\mathbin{::}\Conid{Symbol}){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  key}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{::}\mathbin{*}\mathbf{where}\;{}\<[29]%
+\>[29]{}\mbox{\onelinecomment  type}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mathbin{’}(\Varid{s},\Varid{x})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\Varid{x}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mathbin{’}(\Varid{t},\Varid{x})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\Conid{Get}\;\Varid{xs}\;\Varid{s}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+Another benefit of closed type families is that type-level equality can be
+expressed by unifying type variables with the same name.
+\ensuremath{\Conid{Get}} takes two type arguments, a dictionary and a symbol.
+If the key we are looking for unifies with the symbol of an entry, then
+ \ensuremath{\Conid{Get}} returns the corresponding type, else it keeps
+ searching down the rest of the dictionary.
+
+\ensuremath{\Conid{Get}\;\thinspace'[\!\;\thinspace'(\!\;\text{\tt \char34 A\char34},\Conid{Int}\;\Conid{CLoseTPar}\;\!]\;\text{\tt \char34 A\char34}} evaluates to
+\ensuremath{\Conid{Int}}.
+
+But \ensuremath{\Conid{Get}\;\thinspace'[\!\;\thinspace'(\!\;\text{\tt \char34 A\char34},\Conid{Int}\;\Conid{CLoseTPar}\;\!]\;\text{\tt \char34 B\char34}} would get stuck.
+That's because \ensuremath{\Conid{Get}} is a partial function on types,
+ and these types are computed at compile-time. It wouldn't make
+ much sense for a type checker to crash and throw a ``Non-exhaustive'' error or
+ be non-terminating.
+
+We could make \ensuremath{\Conid{Get}} total, as we would at the term level,
+ with \ensuremath{\Conid{Maybe}}.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{25}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Get}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  dictionary}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{s}\mathbin{::}\Conid{Symbol}){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  key}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{::}\Conid{Maybe}\mathbin{*}\mathbf{where}\;{}\<[29]%
+\>[29]{}\mbox{\onelinecomment  type}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\mathbin{’}[\mskip1.5mu \mskip1.5mu]\;{}\<[25]%
+\>[25]{}\Varid{s}\mathrel{=}\Conid{Nothing}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mathbin{’}(\Varid{s},\Varid{x})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\Conid{Just}\;\Varid{x}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mathbin{’}(\Varid{t},\Varid{x})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\Conid{Get}\;\Varid{xs}\;\Varid{s}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+%
+Other dictionary-related functions are defined in a similar fashion.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{25}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{27}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{28}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mbox{\onelinecomment  inserts or updates an entry}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Set}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  old dictionary}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{s}\mathbin{::}\Conid{Symbol}){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  key}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{x}\mathbin{::}\mathbin{*}){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  type}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]\;\mathbf{where}\;{}\<[29]%
+\>[29]{}\mbox{\onelinecomment  new dictionary}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Set}\mathbin{’}[\mskip1.5mu \mskip1.5mu]\;{}\<[25]%
+\>[25]{}\Varid{s}\;\Varid{x}\mathrel{=}\mathbin{’}[\mskip1.5mu \mathbin{’}(\Varid{s},\Varid{x})\mskip1.5mu]{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Set}\;(\mathbin{’}(\Varid{s},\Varid{y})\mathbin{’:}\Varid{xs})\;\Varid{s}\;\Varid{x}\mathrel{=}(\mathbin{’}(\Varid{s},\Varid{x})\mathbin{’:}\Varid{xs}){}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Set}\;(\mathbin{’}(\Varid{t},\Varid{y})\mathbin{’:}\Varid{xs})\;\Varid{s}\;\Varid{x}\mathrel{=}{}\<[E]%
+\\
+\>[5]{}\hsindent{4}{}\<[9]%
+\>[9]{}\mathbin{’}(\Varid{t},\Varid{y})\mathbin{’:}(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;\Varid{x}){}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mbox{\onelinecomment  removes an entry}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Del}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  old dictionary}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{s}\mathbin{::}\Conid{Symbol}){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  key}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]\;\mathbf{where}\;{}\<[29]%
+\>[29]{}\mbox{\onelinecomment  new dictionary}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Del}\mathbin{’}[\mskip1.5mu \mskip1.5mu]\;\Varid{s}{}\<[27]%
+\>[27]{}\mathrel{=}\mathbin{’}[\mskip1.5mu \mskip1.5mu]{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Del}\;(\mathbin{’}(\Varid{s},\Varid{y})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\Varid{xs}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Del}\;(\mathbin{’}(\Varid{t},\Varid{y})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\mathbin{’}(\Varid{t},\Varid{y})\mathbin{’:}(\Conid{Del}\;\Varid{xs}\;\Varid{s}){}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mbox{\onelinecomment  membership}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Member}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  dictionary}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}(\Varid{s}\mathbin{::}\Conid{Symbol}){}\<[29]%
+\>[29]{}\mbox{\onelinecomment  key}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{::}\Conid{Bool}\;\mathbf{where}\;{}\<[29]%
+\>[29]{}\mbox{\onelinecomment  exists?}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Member}\mathbin{’}[\mskip1.5mu \mskip1.5mu]\;{}\<[28]%
+\>[28]{}\Varid{s}\mathrel{=}\Conid{False}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Member}\;(\mathbin{’}(\Varid{s},\Varid{x})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Member}\;(\mathbin{’}(\Varid{t},\Varid{x})\mathbin{’:}\Varid{xs})\;\Varid{s}\mathrel{=}\Conid{Member}\;\Varid{xs}\;\Varid{s}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\subsection{Proxies and Singleton Types}
+
+Now we could annotate the effects of a command in types. \text{DEL}
+ removes a key from the current database, regardless of its type.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}\mathbin{::}\Conid{KnownSymbol}\;\Varid{s}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Rightarrow \Conid{Proxy}\;\Varid{s}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{s})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.del}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\ensuremath{\Conid{KnownSymbol}} is a class that gives the string associated
+ with a concrete type-level symbol, which can be retrieved with
+ \ensuremath{\Varid{symbolVal}}.\footnotemark
+ Where \ensuremath{\Varid{encodeKey}} converts \ensuremath{\Conid{Proxy}\;\Varid{s}} to
+ \ensuremath{\Conid{ByteString}}.
+\footnotetext{They are defined in \ensuremath{\Conid{\Conid{GHC}.TypeLits}}.}
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{encodeKey}\mathbin{::}\Conid{KnownSymbol}\;\Varid{s}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{ByteString}{}\<[E]%
+\\
+\>[B]{}\Varid{encodeKey}\mathrel{=}\Varid{encode}\mathbin{\cdot}\Varid{symbolVal}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+Since Haskell has a \emph{phase distinction, phasedistinction}, types are
+ erased before runtime. It's impossible to obtain information directly from
+ types, we can only do this indirectly, with
+ \emph{singleton types, singletons}.
+
+A singleton type is a type that has only one instance, and the instance can be
+ think of as the representative of the type at the realm of runtime values.
+
+\ensuremath{\Conid{Proxy}}, as its name would suggest, can be used as
+ singletons. It's a phantom type that could be indexed with any type.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{Proxy}\;\Varid{t}\mathrel{=}\Conid{Proxy}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+In the type of \ensuremath{\Varid{del}}, the type variable
+ \ensuremath{\Varid{s}} is a \ensuremath{\Conid{Symbol}} that is decided by
+ the argument of type \ensuremath{\Conid{Proxy}\;\Varid{s}}.
+ To use \ensuremath{\Varid{del}}, we would have to apply it with a clumsy
+ term-level proxy like this:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34}){}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks

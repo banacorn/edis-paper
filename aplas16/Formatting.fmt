@@ -1,0 +1,42 @@
+%if not lhs2tex_Formatting_fmt_read
+%let lhs2tex_Formatting_fmt_read = True
+
+%if style /= newcode
+\ReadOnlyOnce{Formatting.fmt}%
+\makeatletter
+
+\let\Varid\mathit
+\let\Conid\mathsf
+
+\def\commentbegin{\quad\{\ }
+\def\commentend{\}}
+
+\newcommand{\ty}[1]{\Conid{#1}}
+\newcommand{\con}[1]{\Conid{#1}}
+\newcommand{\id}[1]{\Varid{#1}}
+\newcommand{\cl}[1]{\Varid{#1}}
+\newcommand{\opsym}[1]{\mathrel{#1}}
+
+\newcommand\Keyword[1]{\textbf{\textsf{#1}}}
+\newcommand\Hide{\mathbin{\downarrow}}
+\newcommand\Reveal{\mathbin{\uparrow}}
+
+%format == = "\doubleequals"
+%format . = "\mathbin{\cdot}"
+%format `app` = "\mathbin{\$}"
+%format app = "(\mathbin{\$})"
+%format ++ = "\mathbin{+\!\!\!\!\!+}"
+
+%% Paper-specific keywords
+
+%format NIL = "\thinspace''\Varid{Nil}"
+%format Cons = "\thinspace''\Varid{Cons}"
+%format OpenTList = "\thinspace''[\!"
+%format CloseTList = "\!]"
+%format OpenTPar = "\thinspace''(\!"
+%format CloseTPar = "\!)"
+
+\makeatother
+\EndFmtInput
+%endif
+%endif
