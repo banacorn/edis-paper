@@ -5,10 +5,24 @@
 \section{Type-Level Dictionaries}
 \label{sec:type-level-dict}
 
-To check the bindings between keys and values, we need a \emph{dictionary-like}
- structure, and encode it as a \emph{type} somehow.
+One of the challenges of statically ensuring type correctness of \Redis{},
+which also presents in other stateful languages, is that the type of the value
+associated to a key can be altered after updating. To ensure type correctness,
+we have to keep track of the (\Redis{}) types of all existing keys in a
+{\em dictionary} --- conceptually, a list of pairs of keys and \Redis{} types.
+Each \Redis{} command is embedded in \Popcorn{} as a monadic computation. The
+monad, to be presented in Section \ref{sec:indexed-monads}, is indexed by
+the dictionaries before and after the computation. In a dependently typed
+programming language (without the so-called ``phase distinction'' ---
+separation between types and terms), this would pose no problem. In Haskell
+however, the dictionaries, to index a monad, has to be a Haskell type as well.
 
-\subsection{Datatype promotion}
+In this section we describe how to construct a type-level dictionary, to be
+used with the indexed monad in Section \ref{sec:indexed-monads}. More operations
+on the dictionary will be presented in Section \ref{sec:type-level-fun}.
+
+\subsection{Datatype Promotion}
+
 Normally, at the term level, we could express the datatype of dictionary with
 \emph{type synonym} like this.\footnotemark
 

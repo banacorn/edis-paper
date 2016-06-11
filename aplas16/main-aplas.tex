@@ -3,6 +3,7 @@
 \usepackage{amsmath}
 %\usepackage{amsfonts}
 %\usepackage{amsthm}
+\usepackage{color}
 \usepackage{url}
 \usepackage{mathptmx}
 \usepackage{doubleequals}
@@ -13,7 +14,8 @@
 
 \begin{document}
 
-\title{Preventing Runtime Errors of Redis at Compile Time}
+\title{Safe Redis Queries}
+\subtitle{A Case Study of Type-Level Programming}
 \author{Ting-Yan Lai \inst{1}\inst{2}\and Tyng-Ruey Chuang \inst{1}
   \and Shin-Cheng Mu \inst{1}}
 \institute{Institute of Information Science, Academia Sinica, Taiwan
@@ -23,23 +25,18 @@ National Chiao Tung University, Taiwan}
 \maketitle
 
 \begin{abstract}
-Programmers often interact with database systems by sending queries through libraries or packages in some programming languages. People, however, make mistakes.
-While some of the syntactic and semantic errors can be prevented by the
- language at compile time, or caught by the package at runtime, most semantic
- errors are just being ignored, causing problems at the database system.
-
-In this paper, we demonstrate how to prevent those runtime errors at compile
- time, thus allowing users to write more reliable database queries without
- runtime overhead, by exploiting type-level programming techniques such as
- indexed monad, type-level literals and closed type families in Haskell.
-
-The database system and the package we are targeting are \emph{Redis} and
- \emph{Hedis} respectively, and our implementation is available as \emph{Popcorn}
- on \emph{Hackage}.
+\Redis{} is an in-memory data strcture store, often used as a database, with a
+Haskell interface \Hedis{}. \Redis{} is dynamically typed --- a value associated
+with a key can be overwritten by a value of a different type, and a command,
+when fetching a value of a type it does not expect, signals a runtime error. We
+develop a domain-specific language that, by exploiting Haskell type-level
+programming techniques including indexed monad, type-level literals and closed
+type families, keeps track of types of values in the database and statically
+guarantees that type errors cannot happen.
 \end{abstract}
 
 \input{sections/Introduction}
-\input{sections/Motivation}
+%\input{sections/Motivation}
 \input{sections/TypeLevelDict}
 \input{sections/IndexedMonads}
 \input{sections/TypeLevelFun}
