@@ -11,54 +11,57 @@ associated to a key can be altered after updating. To ensure type correctness,
 we have to keep track of the (\Redis{}) types of all existing keys in a
 {\em dictionary} --- conceptually, a list of pairs of keys and \Redis{} types.
 Each \Redis{} command is embedded in \Popcorn{} as a monadic computation. The
-monad, to be presented in Section \ref{sec:indexed-monads}, is indexed by
+monad, to be presented in Section~\ref{sec:indexed-monads}, is indexed by
 the dictionaries before and after the computation. In a dependently typed
 programming language (without the so-called ``phase distinction'' ---
 separation between types and terms), this would pose no problem. In Haskell
 however, the dictionaries, to index a monad, has to be a Haskell type as well.
 
 In this section we describe how to construct a type-level dictionary, to be
-used with the indexed monad in Section \ref{sec:indexed-monads}. More operations
-on the dictionary will be presented in Section \ref{sec:type-level-fun}.
+used with the indexed monad in Section~\ref{sec:indexed-monads}. More operations
+on the dictionary will be presented in Section~\ref{sec:type-level-fun}.
 
 \subsection{Datatype Promotion}
 
-Normally, at the term level, we could express the datatype of dictionary with
-\emph{type synonym} like this.\footnotemark
+% Normally, at the term level, we could express the datatype of dictionary with
+% \emph{type synonym} like this.\footnotemark
+%
+% \begin{spec}
+% type Key = String
+% type Dictionary = [(Key, TypeRep)]
+% \end{spec}
+%
+% \footnotetext{|TypeRep| supports term-level representations
+%  of datatypes, available in |Data.Typeable|}
 
+A datatype definition such as the one below:
 \begin{spec}
-type Key = String
-type Dictionary = [(Key, TypeRep)]
+data List a = Nil | Cons a (List a) {-"~~,"-}
 \end{spec}
+is usually understood as having defined a type constructor |List|, and two value
+constructors |Nil| and |Cons|. For all lifted types |a|, |List a| is also a
+lifted type. Thus the {\em kind} of |List| is |* -> *|, where |*| is the kind of
+all {\em lifted types} in Haskell. The two value constructors respectively
+have types |Nil :: List a| and |Cons :: a -> List a -> List a|.
 
-\footnotetext{|TypeRep| supports term-level representations
- of datatypes, available in |Data.Typeable|}
+The GHC extension \emph{data kinds}~\cite{promotion}, however, automatically
+promotes certain ``suitable'' types to kinds. With the extension, the |data|
+definition has an alternative reading: for all kind |k|, |List k| is also a
+kind. |Nil| is a type, whose kind is |List k| for some |k|. Given a type |x|
+of kind |k| and a type |xs| of kind |List k|, |Cons x xs| is again a type of
+kind |List k|. Formally, for kind |k|, |Nil :: List k| and |Cons :: k ->
+List k -> List k|. Whether a constructor is promoted can often be inferred
+from the context. To be more specific, prefixing a contructor with
+a single quote, such as in |pNIL| and |CONS|, denotes that it is promoted.
 
-To encode this in the type level, everything has to be
- \emph{promoted}\cite{promotion} one level up.
- From terms to types, and from types to kinds.
+The built-in lists in Haskell has two constructors |[]| and |(:)|, and
+|[1, 2, 3]| is take as a syntax sugar for |1 : (2 : (3 : []))|. The type and
+data constructors can also be promoted. Given kind |k|, |[k]| is also a kind.
+The type constructor 
+For example, since |Int|, |Char|, etc., all have kind |*|, |Int :- (Char :- (Bool :- NIL))| is a type having kind |[*]| -- a list of types. The same list can be denoted by a syntax
+sugar |OpenTList Int, Char, Bool CloseTList|.
 
-Luckily, with recently added GHC extension \emph{data kinds}, suitable
- datatype will be automatically promoted to be a kind, and its value
- constructors to be type constructors. The following type |List|
-
-\begin{spec}
-data List a = Nil | Cons a (List a)
-\end{spec}
-
-Give rise to the following kinds and type constructors:\footnote{To distinguish
- between types and promoted constructors that have
- ambiguous names, prefix promoted constructor with a single quote like
- |NIL| and |CONS|}
-\footnote{All kinds have \emph{sort} BOX in Haskell\cite{sorts}}
-
-
-\begin{spec}
-List k :: BOX
-Nil  :: List k
-Cons :: k -> List k -> List k
-\end{spec}
-
+sugar for |1 :- (2 :- (3 :- NIL))|
 Haskell sugars lists |[1, 2, 3]| and tuples
  |(1, 'a')| with brackets and parentheses.
  We could also express promoted lists and tuples in types like this with

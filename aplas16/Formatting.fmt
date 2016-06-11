@@ -29,8 +29,10 @@
 
 %% Paper-specific keywords
 
-%format NIL = "\thinspace''\Varid{Nil}"
-%format Cons = "\thinspace''\Varid{Cons}"
+%format pNIL = "\thinspace''\Conid{Nil}"
+%format CONS = "\thinspace''\Conid{Cons}"
+%format NIL = "\thinspace''[]"
+%format :- = "\mathbin{\thinspace'':}"
 %format OpenTList = "\thinspace''[\!"
 %format CloseTList = "\!]"
 %format OpenTPar = "\thinspace''(\!"
