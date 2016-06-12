@@ -29,14 +29,16 @@
 
 %% Paper-specific keywords
 
-%format pNIL = "\thinspace''\Conid{Nil}"
-%format CONS = "\thinspace''\Conid{Cons}"
-%format NIL = "\thinspace''[]"
-%format :- = "\mathbin{\thinspace'':}"
-%format OpenTList = "\thinspace''[\!"
+%format ZERO = "\mbox{\textquotesingle}\Conid{Zero}"
+%format SUC = "\mbox{\textquotesingle}\Conid{Suc}"
+%format NIL = "\mbox{\textquotesingle}[]"
+%format :- = "\mathbin{\mbox{\textquotesingle}\!:}"
+%format OpenTList = "\mbox{\textquotesingle}[\!"
 %format CloseTList = "\!]"
-%format OpenTPar = "\thinspace''(\!"
+%format OpenTPar = "\mbox{\textquotesingle}(\!"
 %format CloseTPar = "\!)"
+%format TPar (xs) = "\mbox{\textquotesingle}(" xs ")"
+%format TList (xs) = "\mbox{\textquotesingle}[" xs "]"
 
 \makeatother
 \EndFmtInput

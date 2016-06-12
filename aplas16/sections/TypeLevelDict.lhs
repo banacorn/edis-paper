@@ -21,89 +21,54 @@ In this section we describe how to construct a type-level dictionary, to be
 used with the indexed monad in Section~\ref{sec:indexed-monads}. More operations
 on the dictionary will be presented in Section~\ref{sec:type-level-fun}.
 
-\subsection{Datatype Promotion}
-
-% Normally, at the term level, we could express the datatype of dictionary with
-% \emph{type synonym} like this.\footnotemark
-%
-% \begin{spec}
-% type Key = String
-% type Dictionary = [(Key, TypeRep)]
-% \end{spec}
-%
-% \footnotetext{|TypeRep| supports term-level representations
-%  of datatypes, available in |Data.Typeable|}
-
-A datatype definition such as the one below:
+Haskell maintains the distinction between values, types, and kinds: values are
+categorized by types, and types are categorized by kinds. The kinds are relatively simple: |*| is the kind of all {\em lifted} types, while type
+constructors have kinds such as |* -> *|, |* -> * -> *|, etc. Consider the
+datatype definitions below:
 \begin{spec}
-data List a = Nil | Cons a (List a) {-"~~,"-}
+data Nat = Zero | Suc Nat {-"~~,\qquad"-} data [a] = [] | a : [a] {-"~~."-}
 \end{spec}
-is usually understood as having defined a type constructor |List|, and two value
-constructors |Nil| and |Cons|. For all lifted types |a|, |List a| is also a
-lifted type. Thus the {\em kind} of |List| is |* -> *|, where |*| is the kind of
-all {\em lifted types} in Haskell. The two value constructors respectively
-have types |Nil :: List a| and |Cons :: a -> List a -> List a|.
+The lefthand side is usually seen as having defined a type |Nat :: *|,
+and two value constructors |Zero :: Nat| and |Suc :: Nat -> Nat|. The righthand
+side is how Haskell lists are understood. The {\em kind} of |[.]| is |* -> *|,
+since it takes a lifted type |a| to a lifted type |[a]|. The two value constructors respectively have types |[] :: [a]| and |(:) :: a -> [a] ->
+[a]|, for all type |a|.
 
 The GHC extension \emph{data kinds}~\cite{promotion}, however, automatically
-promotes certain ``suitable'' types to kinds. With the extension, the |data|
-definition has an alternative reading: for all kind |k|, |List k| is also a
-kind. |Nil| is a type, whose kind is |List k| for some |k|. Given a type |x|
-of kind |k| and a type |xs| of kind |List k|, |Cons x xs| is again a type of
-kind |List k|. Formally, for kind |k|, |Nil :: List k| and |Cons :: k ->
-List k -> List k|. Whether a constructor is promoted can often be inferred
-from the context. To be more specific, prefixing a contructor with
-a single quote, such as in |pNIL| and |CONS|, denotes that it is promoted.
+promotes certain ``suitable'' types to kinds.\footnote{It is only informally
+described in the GHC manual what types are ``suitable''.} With the extension,
+the |data| definitions above has an alternative reading: |Nat| is a new kind,
+|Zero :: Nat| is a type having kind |Nat|, and |Suc :: Nat -> Nat| is a type
+constructor, taking a type in kind |Nat| to another type in |Nat|. Whether a
+constructor is promoted can often be inferred from the context. To be more specific, prefixing a constructor with a single quote, such as in |ZERO| and
+|SUC|, denotes that it is promoted.
 
-The built-in lists in Haskell has two constructors |[]| and |(:)|, and
-|[1, 2, 3]| is take as a syntax sugar for |1 : (2 : (3 : []))|. The type and
-data constructors can also be promoted. Given kind |k|, |[k]| is also a kind.
-The type constructor 
-For example, since |Int|, |Char|, etc., all have kind |*|, |Int :- (Char :- (Bool :- NIL))| is a type having kind |[*]| -- a list of types. The same list can be denoted by a syntax
-sugar |OpenTList Int, Char, Bool CloseTList|.
+The situation of lists is similar: for all kind |k|, |[k]| is also a kind. For
+all kind |k|, |[] :: [k]| is a type. Given a type |x|
+of kind |k| and a type |xs| of kind |[k]|, |x : xs| is again a type of
+kind |[k]|. Formally, |(:) :: k -> [k] -> [k]|. For example,
+|Int :- (Char :- (Bool :- NIL))| is a type having kind |[*]| --- a list of
+(lifted) types. The optional quote denotes that the constructors are promoted.
+The same list can be denoted by a syntax sugar |TList (Int, Char, Bool)|.
 
-sugar for |1 :- (2 :- (3 :- NIL))|
-Haskell sugars lists |[1, 2, 3]| and tuples
- |(1, 'a')| with brackets and parentheses.
- We could also express promoted lists and tuples in types like this with
- a single quote prefixed. For example:
- |OpenTList Int, Char CloseTList|, |OpenTPar Int, Char CloseTPar|.
+Tuples are also promoted. Thus we may put two types in a pair to form another
+type, such as in |TPar (Int, Char)|, a type having kind |(*,*)|.
 
-\subsection{Type-level literals}
-
-Now we have type-level lists and tuples to construct the dictionary.
-For keys, |String| also has a type-level correspondence:
-|Symbol|.
-
+Strings in Haskell are nothing but lists of |Char|s. Regarding promotion,
+however, a |String| can be promoted to a type having kind |Symbol|. |Symbol| is
+a type without a constructor: |data Symbol|,
+intended to be used as a promoted kind. In the expression:
 \begin{spec}
-data Symbol
+"this is a type-level string literal" :: Symbol {-"~~,"-}
 \end{spec}
+the string on the lefthand side of |(::)| is a type, having kind |Symbol|.
 
-Symbol is defined without a value constructor, because it's intended to be used
- as a promoted kind.
-
+With all of these ingredients, we are ready to build our dictionaries, or
+type-level associate lists:
 \begin{spec}
-"this is a type-level string literal" :: Symbol
+type DictEmpty = NIL {-"~~,"-}
+type Dict0 = TList (TPar ("key", Bool)) {-"~~,"-}
+type Dict1 = TList (TPar ("A", Int), TPar ("B", "A")) {-"~~."-}
 \end{spec}
-%
-% Nonetheless, it's still useful to have a term-level value that links with a
-%  Symbol, when we want to retrieve type-level information at runtime (but not the
-%  other way around!).
-
-\subsection{Putting Everything Together}
-
-With all of these ingredients ready, let's build some dictionaries!
-
-\begin{spec}
-type DictEmpty = '[]
-type Dict0 = '[ '("key", Bool) ]
-type Dict1 = '[ '("A", Int), '("B", "A") ]
-\end{spec}
-
-These dictionaries are defined with \emph{type synonym}, since they are
- \emph{types}, not \emph{terms}. If we ask \text{GHCi} what is the
- kind of |Dict1|, we will get |Dict1 :: [ (Symbol, *) ]|
-
-The kind |*| (pronounced ``star'') stands for the set of all
- concrete type expressions, such as |Int|,
- |Char| or even a symbol |"symbol"|,
- while |Symbol| is restricted to all symbols only.
+All the entities defined above are types, where |Dict0| and |Dict1|
+have kind |[(Symbol, *)]|.

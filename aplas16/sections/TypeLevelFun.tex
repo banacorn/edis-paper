@@ -370,10 +370,10 @@ If the key we are looking for unifies with the symbol of an entry, then
  \ensuremath{\Conid{Get}} returns the corresponding type, else it keeps
  searching down the rest of the dictionary.
 
-\ensuremath{\Conid{Get}\;\thinspace'[\!\;\thinspace'(\!\;\text{\tt \char34 A\char34},\Conid{Int}\;\Conid{CLoseTPar}\;\!]\;\text{\tt \char34 A\char34}} evaluates to
+\ensuremath{\Conid{Get}\;\mbox{\textquotesingle}[\!\;\mbox{\textquotesingle}(\!\;\text{\tt \char34 A\char34},\Conid{Int}\;\Conid{CLoseTPar}\;\!]\;\text{\tt \char34 A\char34}} evaluates to
 \ensuremath{\Conid{Int}}.
 
-But \ensuremath{\Conid{Get}\;\thinspace'[\!\;\thinspace'(\!\;\text{\tt \char34 A\char34},\Conid{Int}\;\Conid{CLoseTPar}\;\!]\;\text{\tt \char34 B\char34}} would get stuck.
+But \ensuremath{\Conid{Get}\;\mbox{\textquotesingle}[\!\;\mbox{\textquotesingle}(\!\;\text{\tt \char34 A\char34},\Conid{Int}\;\Conid{CLoseTPar}\;\!]\;\text{\tt \char34 B\char34}} would get stuck.
 That's because \ensuremath{\Conid{Get}} is a partial function on types,
  and these types are computed at compile-time. It wouldn't make
  much sense for a type checker to crash and throw a ``Non-exhaustive'' error or
