@@ -14,16 +14,16 @@ Users may need to make assertions about the status of some key-type bindings in
 declare :: (KnownSymbol s, Member xs s ~ False)
         => Proxy s
         -> Proxy x  -- type of value
-        -> Popcorn xs (Set xs s x) ()
-declare s x = Popcorn $ return ()
+        -> Edis xs (Set xs s x) ()
+declare s x = Edis $ return ()
 
 renounce :: (KnownSymbol s, Member xs s ~ True)
-        => Proxy s -> Popcorn xs (Del xs s) ()
-renounce s = Popcorn $ return ()
+        => Proxy s -> Edis xs (Del xs s) ()
+renounce s = Edis $ return ()
 
 -- to be used at the beginning of a program
-start :: Popcorn ’[] ’[] ()
-start = Popcorn $ return ()
+start :: Edis ’[] ’[] ()
+start = Edis $ return ()
 \end{spec}
 
 \subsection{A complete example}
@@ -35,7 +35,7 @@ The following program increases the value of |"A"| as an integer, push the resul
 main :: IO ()
 main = do
     conn <- connect defaultConnectInfo
-    result <- runRedis conn $ unPopcorn $ start
+    result <- runRedis conn $ unEdis $ start
         `bind` \_ ->  declare
                         (Proxy :: Proxy "A")
                         (Proxy :: Proxy Integer)

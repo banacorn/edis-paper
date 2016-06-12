@@ -32,18 +32,18 @@ state. In |x `bind` f|, a computation |x :: m p q a| is followed by
 the computation returned by |f|. The result is a monad |m p r b|.
 Indexed monads have been used ~\cite{typefun,staticresources} ... \todo{for what? Some discriptions here to properly cite them.}
 
-We define a new indexed monad |Popcorn| which, at term level, merely wraps
+We define a new indexed monad |Edis| which, at term level, merely wraps
 |Redis| in an additional constructor. The purpose is to add the
 pre/postconditions at type level:
 \begin{spec}
-newtype Popcorn p q a = Popcorn { unPopcorn :: Redis a } {-"~~,"-}
+newtype Edis p q a = Edis { unEdis :: Redis a } {-"~~,"-}
 
-instance IMonad Popcorn where
-    unit = Popcorn . return
-    bind m f = Popcorn (unPopcorn m >>= unPopcorn . f ) {-"~~."-}
+instance IMonad Edis where
+    unit = Edis . return
+    bind m f = Edis (unEdis m >>= unEdis . f ) {-"~~."-}
 \end{spec}
 At term level, the |unit| and |bind| methods are not interesting: they merely
-make calls to |return| and |(>>=)| of |Redis|, and extracts and re-apply the constructor |Popcorn| when necessary. With |Popcorn| being a |newtype|, they
+make calls to |return| and |(>>=)| of |Redis|, and extracts and re-apply the constructor |Edis| when necessary. With |Edis| being a |newtype|, they
 can be optimized away in runtime. The interesting bits happen in compile type,
 on the added type information.
 
@@ -55,12 +55,12 @@ For now, however, let us look at the simplest \Redis{} command.
 
 The command \text{PING} in \Redis{} does nothing but replies a message
 \text{PONG} if the connection is alive. In \Hedis{}, |ping| has type
-|Redis (Either Reply Status)|. The \Popcorn{} version of |ping| simply
+|Redis (Either Reply Status)|. The \Edis{} version of |ping| simply
 applys an additional constructor (functions from \Hedis{} are qualified with
 |Hedis| to prevent name clashing):
 \begin{spec}
-ping :: Popcorn xs xs (Either Reply Status)
-ping = Popcorn Hedis.ping {-"~~."-}
+ping :: Edis xs xs (Either Reply Status)
+ping = Edis Hedis.ping {-"~~."-}
 \end{spec}
 Since |ping| does not alter the database, the postcondition and precondition
 are the same. Commands that are more interesting will be introduced after

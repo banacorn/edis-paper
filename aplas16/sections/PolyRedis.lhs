@@ -28,8 +28,8 @@ data Sets
 set :: KnownSymbol s
     => Proxy s
     -> ByteString       -- data to store
-    -> Popcorn xs (Set xs s Strings) (Either Reply Status)
-set key val = Popcorn $ Hedis.set (encodeKey key) val
+    -> Edis xs (Set xs s Strings) (Either Reply Status)
+set key val = Edis $ Hedis.set (encodeKey key) val
 \end{spec}
 
 After \text{SET}, the key will be associated with
@@ -78,8 +78,8 @@ data SetOf x
 set :: (KnownSymbol s, Serialize x)
     => Proxy s
     -> x       -- can be anything, as long as it's serializable
-    -> Popcorn xs (Set xs s (StringOf x)) (Either Reply Status)
-set key val = Popcorn $ Hedis.set (encodeKey key) (encode val)
+    -> Edis xs (Set xs s (StringOf x)) (Either Reply Status)
+set key val = Edis $ Hedis.set (encodeKey key) (encode val)
 \end{spec}
 
 For example, if we execute |set (Proxy :: Proxy "A") True|,
@@ -99,14 +99,14 @@ We could handle this by mapping Redis's strings of integers and floats to
 incr :: (KnownSymbol s
       , Get xs s ~ Just (StringOf Integer))
      => Proxy s
-     -> Popcorn xs xs (Either Reply Integer)
-incr key = Popcorn $ Hedis.incr (encodeKey key)
+     -> Edis xs xs (Either Reply Integer)
+incr key = Edis $ Hedis.incr (encodeKey key)
 
 incrbyfloat :: (KnownSymbol s
      , Get xs s ~ Just (StringOf Double))
     => Proxy s
     -> Double
-    -> Popcorn xs xs (Either Reply Double)
+    -> Edis xs xs (Either Reply Double)
 incrbyfloat key n =
-    Popcorn $ Hedis.incrbyfloat (encodeKey key) n
+    Edis $ Hedis.incrbyfloat (encodeKey key) n
 \end{spec}

@@ -298,7 +298,7 @@ associated to values of type \ensuremath{\Conid{Int}}, \ensuremath{\Conid{Char}}
 
 The dictionary mixes values (strings such as \ensuremath{\text{\tt \char34 A\char34}}, \ensuremath{\text{\tt \char34 B\char34}}) and types. Further
 more, as mentioned in Section~\ref{sec:indexed-monads}, the dictionaries are
-to be used parameters to the indexed monad \ensuremath{\Conid{Popcorn}}. In a dependently typed
+to be used parameters to the indexed monad \ensuremath{\Conid{Edis}}. In a dependently typed
 programming language (without the so-called ``phase distinction'' ---
 separation between types and terms), this would pose no problem. In Haskell
 however, the dictionaries, to index a monad, has to be a type as well.
@@ -579,20 +579,19 @@ dictionary.
 
 The \Hedis{} function \ensuremath{\Varid{del}\mathbin{::}[\mskip1.5mu \Conid{ByteString}\mskip1.5mu]\to \Conid{Either}\;\Conid{Reply}\;\Conid{Integer}} takes a list
 of keys (encoded to \ensuremath{\Conid{ByteString}}) and removes the entries having those keys in
-the database. For simplicity, we consider creating a \Popcorn{} counterpart
+the database. For simplicity, we consider creating a \Edis{} counterpart
 that takes only one key. A first attempt may lead to something like the
 following:
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Varid{del}\mathbin{::}\Conid{String}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\mathbin{?})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\>[B]{}\Varid{del}\mathbin{::}\Conid{String}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\mathbin{?})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
 \\
-\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.del}\;[\mskip1.5mu \Varid{encodeKey}\;\Varid{key}\mskip1.5mu]~~.{}\<[E]%
+\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.del}\;[\mskip1.5mu \Varid{encode}\;\Varid{key}\mskip1.5mu]~~.{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
-At term-level, our \ensuremath{\Varid{del}} merely calls \ensuremath{\Varid{\Conid{Hedis}.del}} (assuming that \ensuremath{\Varid{encodeKey}}
-converts \ensuremath{\Varid{key}} to a \ensuremath{\Conid{ByteString}}). At type-level, if the status of the database
-before \ensuremath{\Varid{del}} is called is specified by \ensuremath{\Varid{xs}}, the status after the execution
+At term-level, our \ensuremath{\Varid{del}} merely calls \ensuremath{\Varid{\Conid{Hedis}.del}}, with the help of \ensuremath{\Varid{encode}}
+that converts \ensuremath{\Varid{key}} to a \ensuremath{\Conid{ByteString}}. At type-level, if the status of the database before \ensuremath{\Varid{del}} is called is specified by \ensuremath{\Varid{xs}}, the status afterwards
 should be specified by \ensuremath{\Conid{Del}\;\Varid{xs}\mathbin{?}}. The question, however, is what to fill in
 the question mark. The string \ensuremath{\Varid{key}} is a runtime value. How do we pass it to
 the type level?
@@ -609,9 +608,9 @@ the type level?
 \>[5]{}\Rightarrow \Conid{Proxy}\;\Varid{s}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{s})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\>[5]{}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{s})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
 \\
-\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.del}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
+\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.del}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 

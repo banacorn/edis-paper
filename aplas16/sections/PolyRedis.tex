@@ -327,9 +327,9 @@ Most Redis commands only work with a certain type of these containers. To
 \>[25]{}\mbox{\onelinecomment  data to store}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;\Conid{Strings})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
+\>[5]{}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;\Conid{Strings})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
 \\
-\>[B]{}\Varid{set}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.set}\;(\Varid{encodeKey}\;\Varid{key})\;\Varid{val}{}\<[E]%
+\>[B]{}\Varid{set}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.set}\;(\Varid{encodeKey}\;\Varid{key})\;\Varid{val}{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 
@@ -404,9 +404,9 @@ We rename container types and extend it with an extra type argument,
 \>[16]{}\mbox{\onelinecomment  can be anything, as long as it's serializable}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;(\Conid{StringOf}\;\Varid{x}))\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
+\>[5]{}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;(\Conid{StringOf}\;\Varid{x}))\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
 \\
-\>[B]{}\Varid{set}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.set}\;(\Varid{encodeKey}\;\Varid{key})\;(\Varid{encode}\;\Varid{val}){}\<[E]%
+\>[B]{}\Varid{set}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.set}\;(\Varid{encodeKey}\;\Varid{key})\;(\Varid{encode}\;\Varid{val}){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 
@@ -438,9 +438,9 @@ We could handle this by mapping Redis's strings of integers and floats to
 \>[6]{}\Rightarrow \Conid{Proxy}\;\Varid{s}{}\<[E]%
 \\
 \>[B]{}\hsindent{6}{}\<[6]%
-\>[6]{}\to \Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\>[6]{}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
 \\
-\>[B]{}\Varid{incr}\;\Varid{key}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.incr}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
+\>[B]{}\Varid{incr}\;\Varid{key}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.incr}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
 \\[\blanklineskip]%
 \>[B]{}\Varid{incrbyfloat}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s}{}\<[E]%
 \\
@@ -454,11 +454,11 @@ We could handle this by mapping Redis's strings of integers and floats to
 \>[5]{}\to \Conid{Double}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\to \Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Double}){}\<[E]%
+\>[5]{}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Double}){}\<[E]%
 \\
 \>[B]{}\Varid{incrbyfloat}\;\Varid{key}\;\Varid{n}\mathrel{=}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.incrbyfloat}\;(\Varid{encodeKey}\;\Varid{key})\;\Varid{n}{}\<[E]%
+\>[5]{}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.incrbyfloat}\;(\Varid{encodeKey}\;\Varid{key})\;\Varid{n}{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks

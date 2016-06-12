@@ -305,7 +305,7 @@ All other data structures in Redis also follow the semantics similar to
 \>[B]{}\Varid{get}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{Serialize}\;\Varid{x},\Conid{StringOrNX}\;\Varid{xs}\;\Varid{s}){}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;(\Conid{Maybe}\;\Varid{x})){}\<[E]%
+\>[5]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;(\Conid{Maybe}\;\Varid{x})){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 
@@ -330,7 +330,7 @@ Instead of allowing the key to be non-existent, we require that the key must
 \>[6]{},\Conid{Just}\;(\Conid{StringOf}\;\Varid{x})\mathord{\sim}\Conid{Get}\;\Varid{xs}\;\Varid{s}){}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;(\Conid{Maybe}\;\Varid{x})){}\<[E]%
+\>[5]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;(\Conid{Maybe}\;\Varid{x})){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 
@@ -354,7 +354,7 @@ Some command may take a variable number of arguments as inputs, and returns more
 \end{hscode}\resethooks
 
 In Hedis such command could easily be expressed with lists of
- \ensuremath{\Conid{ByteString}}s. But in Popcorn, things escalate quickly, as
+ \ensuremath{\Conid{ByteString}}s. But in \Edis{}, things escalate quickly, as
  the keys and values will have to be expressed with \emph{heterogeneous
  lists}\cite{hetero}, which would be pratically infeasible, considering the cost,
  if not impossible.

@@ -18,7 +18,7 @@ All other data structures in Redis also follow the semantics similar to
 
 \begin{spec}
 get :: (KnownSymbol s, Serialize x, StringOrNX xs s)
-    => Proxy s -> Popcorn xs xs (Either Reply (Maybe x))
+    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
 \end{spec}
 
 Since the key may not exist, we don't know what |x| would
@@ -34,7 +34,7 @@ Instead of allowing the key to be non-existent, we require that the key must
 \begin{spec}
 get :: (KnownSymbol s, Serialize x
      , Just (StringOf x) ~ Get xs s)
-    => Proxy s -> Popcorn xs xs (Either Reply (Maybe x))
+    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
 \end{spec}
 
 \paragraph{Commands with multiple inputs or outputs}
@@ -49,7 +49,7 @@ Hedis.sinter :: [ByteString]                      -- keys
 \end{spec}
 
 In Hedis such command could easily be expressed with lists of
- |ByteString|s. But in Popcorn, things escalate quickly, as
+ |ByteString|s. But in \Edis{}, things escalate quickly, as
  the keys and values will have to be expressed with \emph{heterogeneous
  lists}\cite{hetero}, which would be pratically infeasible, considering the cost,
  if not impossible.

@@ -409,13 +409,13 @@ a host language with a strong typing system, one naturally wishes to build a
 a domain-specific embedded language (DSEL) that exploits the rich type system
 of Haskell to ensure absence of \Redis{} type errors.
 
-This paper discusses the techniques we used and experiences we learned from building such a language, nicknamed \Popcorn{}. We constructed an {\em indexed
+This paper discusses the techniques we used and experiences we learned from building such a language, nicknamed \Edis{}. We constructed an {\em indexed
 monad}, on top of the monad \ensuremath{\Conid{Redis}}, which is indexed by a dictionary that
 maintains the set of currently defined keys and their types. To represent
 the dictionary, we need to encode variable binds with {\em type-level} lists
 and strings. To summarize our contributions:
 \begin{itemize}
-\item We present \Popcorn{}, a statically typed domain-specific language embedded in Haskell and built on \Hedis{}.
+\item We present \Edis{}, a statically typed domain-specific language embedded in Haskell and built on \Hedis{}.
 % also makes Redis polymorphic by automatically converting back and forth from values of arbitrary types and boring ByteStrings.
 %
 \item We demonstrate how to model variable bindings of an embedded DSL using

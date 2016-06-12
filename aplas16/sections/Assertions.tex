@@ -307,22 +307,22 @@ Users may need to make assertions about the status of some key-type bindings in
 \>[21]{}\mbox{\onelinecomment  type of value}{}\<[E]%
 \\
 \>[B]{}\hsindent{9}{}\<[9]%
-\>[9]{}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;\Varid{x})\;(){}\<[E]%
+\>[9]{}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;\Varid{x})\;(){}\<[E]%
 \\
-\>[B]{}\Varid{declare}\;\Varid{s}\;\Varid{x}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{return}\;(){}\<[E]%
+\>[B]{}\Varid{declare}\;\Varid{s}\;\Varid{x}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{return}\;(){}\<[E]%
 \\[\blanklineskip]%
 \>[B]{}\Varid{renounce}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{Member}\;\Varid{xs}\;\Varid{s}\mathord{\sim}\Conid{True}){}\<[E]%
 \\
 \>[B]{}\hsindent{9}{}\<[9]%
-\>[9]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{s})\;(){}\<[E]%
+\>[9]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{s})\;(){}\<[E]%
 \\
-\>[B]{}\Varid{renounce}\;\Varid{s}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{return}\;(){}\<[E]%
+\>[B]{}\Varid{renounce}\;\Varid{s}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{return}\;(){}\<[E]%
 \\[\blanklineskip]%
 \>[B]{}\mbox{\onelinecomment  to be used at the beginning of a program}{}\<[E]%
 \\
-\>[B]{}\Varid{start}\mathbin{::}\Conid{Popcorn}\mathbin{’}[\mskip1.5mu \mskip1.5mu]\mathbin{’}[\mskip1.5mu \mskip1.5mu]\;(){}\<[E]%
+\>[B]{}\Varid{start}\mathbin{::}\Conid{Edis}\mathbin{’}[\mskip1.5mu \mskip1.5mu]\mathbin{’}[\mskip1.5mu \mskip1.5mu]\;(){}\<[E]%
 \\
-\>[B]{}\Varid{start}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{return}\;(){}\<[E]%
+\>[B]{}\Varid{start}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{return}\;(){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 
@@ -349,7 +349,7 @@ The following program increases the value of \ensuremath{\text{\tt \char34 A\cha
 \>[5]{}\Varid{conn}\leftarrow \Varid{connect}\;\Varid{defaultConnectInfo}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\Varid{result}\leftarrow \Varid{runRedis}\;\Varid{conn}\mathbin{\$}\Varid{unPopcorn}\mathbin{\$}\Varid{start}{}\<[E]%
+\>[5]{}\Varid{result}\leftarrow \Varid{runRedis}\;\Varid{conn}\mathbin{\$}\Varid{unEdis}\mathbin{\$}\Varid{start}{}\<[E]%
 \\
 \>[5]{}\hsindent{4}{}\<[9]%
 \>[9]{}\mathbin{`\Varid{bind}`}\mathbin{\char92 \char95 }\to {}\<[23]%

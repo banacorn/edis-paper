@@ -322,26 +322,26 @@ state. In \ensuremath{\Varid{x}\mathbin{`\Varid{bind}`}\Varid{f}}, a computation
 the computation returned by \ensuremath{\Varid{f}}. The result is a monad \ensuremath{\Varid{m}\;\Varid{p}\;\Varid{r}\;\Varid{b}}.
 Indexed monads have been used ~\cite{typefun,staticresources} ... \todo{for what? Some discriptions here to properly cite them.}
 
-We define a new indexed monad \ensuremath{\Conid{Popcorn}} which, at term level, merely wraps
+We define a new indexed monad \ensuremath{\Conid{Edis}} which, at term level, merely wraps
 \ensuremath{\Conid{Redis}} in an additional constructor. The purpose is to add the
 pre/postconditions at type level:
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{5}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\mathbf{newtype}\;\Conid{Popcorn}\;\Varid{p}\;\Varid{q}\;\Varid{a}\mathrel{=}\Conid{Popcorn}\;\{\mskip1.5mu \Varid{unPopcorn}\mathbin{::}\Conid{Redis}\;\Varid{a}\mskip1.5mu\}~~,{}\<[E]%
+\>[B]{}\mathbf{newtype}\;\Conid{Edis}\;\Varid{p}\;\Varid{q}\;\Varid{a}\mathrel{=}\Conid{Edis}\;\{\mskip1.5mu \Varid{unEdis}\mathbin{::}\Conid{Redis}\;\Varid{a}\mskip1.5mu\}~~,{}\<[E]%
 \\[\blanklineskip]%
-\>[B]{}\mathbf{instance}\;\Conid{IMonad}\;\Conid{Popcorn}\;\mathbf{where}{}\<[E]%
+\>[B]{}\mathbf{instance}\;\Conid{IMonad}\;\Conid{Edis}\;\mathbf{where}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\Varid{unit}\mathrel{=}\Conid{Popcorn}\mathbin{\cdot}\Varid{return}{}\<[E]%
+\>[5]{}\Varid{unit}\mathrel{=}\Conid{Edis}\mathbin{\cdot}\Varid{return}{}\<[E]%
 \\
 \>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}\Varid{bind}\;\Varid{m}\;\Varid{f}\mathrel{=}\Conid{Popcorn}\;(\Varid{unPopcorn}\;\Varid{m}\bind \Varid{unPopcorn}\mathbin{\cdot}\Varid{f})~~.{}\<[E]%
+\>[5]{}\Varid{bind}\;\Varid{m}\;\Varid{f}\mathrel{=}\Conid{Edis}\;(\Varid{unEdis}\;\Varid{m}\bind \Varid{unEdis}\mathbin{\cdot}\Varid{f})~~.{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 At term level, the \ensuremath{\Varid{unit}} and \ensuremath{\Varid{bind}} methods are not interesting: they merely
-make calls to \ensuremath{\Varid{return}} and \ensuremath{(\bind )} of \ensuremath{\Conid{Redis}}, and extracts and re-apply the constructor \ensuremath{\Conid{Popcorn}} when necessary. With \ensuremath{\Conid{Popcorn}} being a \ensuremath{\mathbf{newtype}}, they
+make calls to \ensuremath{\Varid{return}} and \ensuremath{(\bind )} of \ensuremath{\Conid{Redis}}, and extracts and re-apply the constructor \ensuremath{\Conid{Edis}} when necessary. With \ensuremath{\Conid{Edis}} being a \ensuremath{\mathbf{newtype}}, they
 can be optimized away in runtime. The interesting bits happen in compile type,
 on the added type information.
 
@@ -353,15 +353,15 @@ For now, however, let us look at the simplest \Redis{} command.
 
 The command \text{PING} in \Redis{} does nothing but replies a message
 \text{PONG} if the connection is alive. In \Hedis{}, \ensuremath{\Varid{ping}} has type
-\ensuremath{\Conid{Redis}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status})}. The \Popcorn{} version of \ensuremath{\Varid{ping}} simply
+\ensuremath{\Conid{Redis}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status})}. The \Edis{} version of \ensuremath{\Varid{ping}} simply
 applys an additional constructor (functions from \Hedis{} are qualified with
 \ensuremath{\Conid{Hedis}} to prevent name clashing):
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Varid{ping}\mathbin{::}\Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
+\>[B]{}\Varid{ping}\mathbin{::}\Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
 \\
-\>[B]{}\Varid{ping}\mathrel{=}\Conid{Popcorn}\;\Varid{\Conid{Hedis}.ping}~~.{}\<[E]%
+\>[B]{}\Varid{ping}\mathrel{=}\Conid{Edis}\;\Varid{\Conid{Hedis}.ping}~~.{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 Since \ensuremath{\Varid{ping}} does not alter the database, the postcondition and precondition

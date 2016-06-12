@@ -16,7 +16,7 @@ associated to values of type |Int|, |Char|, and |Bool|.''
 
 The dictionary mixes values (strings such as |"A"|, |"B"|) and types. Further
 more, as mentioned in Section~\ref{sec:indexed-monads}, the dictionaries are
-to be used parameters to the indexed monad |Popcorn|. In a dependently typed
+to be used parameters to the indexed monad |Edis|. In a dependently typed
 programming language (without the so-called ``phase distinction'' ---
 separation between types and terms), this would pose no problem. In Haskell
 however, the dictionaries, to index a monad, has to be a type as well.
@@ -184,12 +184,12 @@ type family Member (xs :: [(Symbol, *)]) (s :: Symbol) :: Bool where
 
 The \Hedis{} function |del :: [ByteString] -> Either Reply Integer| takes a list
 of keys (encoded to |ByteString|) and removes the entries having those keys in
-the database. For simplicity, we consider creating a \Popcorn{} counterpart
+the database. For simplicity, we consider creating a \Edis{} counterpart
 that takes only one key. A first attempt may lead to something like the
 following:
 \begin{spec}
-del :: String -> Popcorn xs (Del xs ?) (Either Reply Integer)
-del key = Popcorn $ Hedis.del [encode key] {-"~~."-}
+del :: String -> Edis xs (Del xs ?) (Either Reply Integer)
+del key = Edis $ Hedis.del [encode key] {-"~~."-}
 \end{spec}
 At term-level, our |del| merely calls |Hedis.del|, with the help of |encode|
 that converts |key| to a |ByteString|. At type-level, if the status of the database before |del| is called is specified by |xs|, the status afterwards
@@ -202,8 +202,8 @@ the type level?
 \begin{spec}
 del :: KnownSymbol s
     => Proxy s
-    -> Popcorn xs (Del xs s) (Either Reply Integer)
-del key = Popcorn $ Hedis.del (encodeKey key)
+    -> Edis xs (Del xs s) (Either Reply Integer)
+del key = Edis $ Hedis.del (encodeKey key)
 \end{spec}
 
 |KnownSymbol| is a class that gives the string associated

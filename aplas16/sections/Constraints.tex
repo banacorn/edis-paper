@@ -322,12 +322,12 @@ Such constraint could be expressed in types with
 \>[6]{}\Rightarrow \Conid{Proxy}\;\Varid{s}{}\<[E]%
 \\
 \>[B]{}\hsindent{6}{}\<[6]%
-\>[6]{}\to \Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\>[6]{}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
 \\
 \>[B]{}\Varid{llen}\;\Varid{key}\mathrel{=}{}\<[E]%
 \\
 \>[B]{}\hsindent{6}{}\<[6]%
-\>[6]{}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.llen}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
+\>[6]{}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.llen}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
 
@@ -433,8 +433,8 @@ The complete implementation of \text{LLEN} with
 \>[9]{}\Rightarrow \Conid{Proxy}\;\Varid{s}{}\<[E]%
 \\
 \>[B]{}\hsindent{9}{}\<[9]%
-\>[9]{}\to \Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\>[9]{}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
 \\
-\>[B]{}\Varid{llen}\;\Varid{key}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.llen}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
+\>[B]{}\Varid{llen}\;\Varid{key}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.llen}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks

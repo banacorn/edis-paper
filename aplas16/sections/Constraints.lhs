@@ -30,9 +30,9 @@ Such constraint could be expressed in types with
 llen :: (KnownSymbol s
       , Get xs s ~ Just (ListOf x))
      => Proxy s
-     -> Popcorn xs xs (Either Reply Integer)
+     -> Edis xs xs (Either Reply Integer)
 llen key =
-     Popcorn $ Hedis.llen (encodeKey key)
+     Edis $ Hedis.llen (encodeKey key)
 \end{spec}
 
 Where |(~)| denotes that |Get xs s|
@@ -115,6 +115,6 @@ The complete implementation of \text{LLEN} with
 \begin{spec}
 llen :: (KnownSymbol s, ListOrNX xs s)
         => Proxy s
-        -> Popcorn xs xs (Either Reply Integer)
-llen key = Popcorn $ Hedis.llen (encodeKey key)
+        -> Edis xs xs (Either Reply Integer)
+llen key = Edis $ Hedis.llen (encodeKey key)
 \end{spec}
