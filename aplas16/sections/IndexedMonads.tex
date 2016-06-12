@@ -287,18 +287,19 @@
 \section{Indexed Monads}
 \label{sec:indexed-monads}
 
-Stateful computations are often reasoned in a Hoare-logic style: each command
-is labelled by a \emph{precondition} and a \emph{postcondition}. If the former
-is satisfied before the command is executed, the latter is guaranteed to hold
-afterwards.
+Stateful computations are often reasoned using Hoare logic. A {\em Hoare triple}
+$\{P\} S \{Q\}$ denotes such a proposition: if the statement $S$ is executed in
+a state satisfying prediate $P$, when it terminates, the state must satisfy
+predicate $Q$. Predicates $P$ and $Q$ are respectively is called the
+\emph{precondition} and the \emph{postcondition} of the Hoare triple.
 
 In Haskell, stateful computations are represented by monads. In order to
 reason about their behaviors within the type system, we wish to label a state
-monad with its pre and postcondition. An \emph{indexed
-monad}~\cite{indexedmonad} (also called \emph{monadish} or
-\emph{parameterised monad}) is a monad that, in addition to the type of value
-it computes, takes two more type arguments representing an initial state and
-a final state, to be interpreted like a Hoare triple~\cite{kleisli}:
+monad with its pre and postcondition. An \emph{indexed monad}~%
+\cite{indexedmonad} (also called \emph{monadish} or \emph{parameterised monad})
+is a monad that, in addition to the type of value it computes, takes two more
+type arguments representing an initial state and a final state, to be
+interpreted like a Hoare triple~\cite{kleisli}:
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{5}{@{}>{\hspre}l<{\hspost}@{}}%
@@ -313,19 +314,17 @@ a final state, to be interpreted like a Hoare triple~\cite{kleisli}:
 \ColumnHook
 \end{hscode}\resethooks
 The intention is that a computation of type \ensuremath{\Varid{m}\;\Varid{p}\;\Varid{q}\;\Varid{a}} is a stateful computation
-such that if it starts execution in a state satisfying \ensuremath{\Varid{p}} and terminates, it
-yields a value of type \ensuremath{\Varid{a}}, and the new state satisfies \ensuremath{\Varid{q}}.
-The operator \ensuremath{\Varid{unit}} lifts a pure computation to a stateful computation that
-does not alter the state. In \ensuremath{\Varid{x}\mathbin{`\Varid{bind}`}\Varid{f}}, a computation \ensuremath{\Varid{x}\mathbin{::}\Varid{m}\;\Varid{p}\;\Varid{q}\;\Varid{a}} must
-be chained before \ensuremath{\Varid{f}\mathbin{::}\Varid{a}\to \Varid{m}\;\Varid{q}\;\Varid{r}\;\Varid{b}}, which expects a value of type \ensuremath{\Varid{a}} and
-a state satisfying \ensuremath{\Varid{q}} and, if terminates, ends in a state satisfying \ensuremath{\Varid{r}}.
-The result is a monad \ensuremath{\Varid{m}\;\Varid{p}\;\Varid{r}\;\Varid{b}} --- a computation that, if executed in a state
-satisfying \ensuremath{\Varid{p}} and terminates, yields a value \ensuremath{\Varid{b}} and a state satisfying \ensuremath{\Varid{r}}.
+such that, if it starts execution in a state satisfying \ensuremath{\Varid{p}} and terminates, it
+yields a value of type \ensuremath{\Varid{a}}, and the new state satisfies \ensuremath{\Varid{q}}. The operator \ensuremath{\Varid{unit}}
+lifts a pure computation to a stateful computation that does not alter the
+state. In \ensuremath{\Varid{x}\mathbin{`\Varid{bind}`}\Varid{f}}, a computation \ensuremath{\Varid{x}\mathbin{::}\Varid{m}\;\Varid{p}\;\Varid{q}\;\Varid{a}} is followed by
+\ensuremath{\Varid{f}\mathbin{::}\Varid{a}\to \Varid{m}\;\Varid{q}\;\Varid{r}\;\Varid{b}} --- the postcondition of \ensuremath{\Varid{x}} matches the precondition of
+the computation returned by \ensuremath{\Varid{f}}. The result is a monad \ensuremath{\Varid{m}\;\Varid{p}\;\Varid{r}\;\Varid{b}}.
 Indexed monads have been used ~\cite{typefun,staticresources} ... \todo{for what? Some discriptions here to properly cite them.}
 
 We define a new indexed monad \ensuremath{\Conid{Popcorn}} which, at term level, merely wraps
-\ensuremath{\Conid{Redis}} in an additional constructor. The purpose is to add the pre and
-postconditions at type level:
+\ensuremath{\Conid{Redis}} in an additional constructor. The purpose is to add the
+pre/postconditions at type level:
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{5}{@{}>{\hspre}l<{\hspost}@{}}%
@@ -341,36 +340,30 @@ postconditions at type level:
 \>[5]{}\Varid{bind}\;\Varid{m}\;\Varid{f}\mathrel{=}\Conid{Popcorn}\;(\Varid{unPopcorn}\;\Varid{m}\bind \Varid{unPopcorn}\mathbin{\cdot}\Varid{f})~~.{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
-To execute a \ensuremath{\Conid{Popcorn}} program, simply apply it to \ensuremath{\Varid{unPopcorn}} to erase the additional type information and get back an ordinary \Hedis{} program.
+At term level, the \ensuremath{\Varid{unit}} and \ensuremath{\Varid{bind}} methods are not interesting: they merely
+make calls to \ensuremath{\Varid{return}} and \ensuremath{(\bind )} of \ensuremath{\Conid{Redis}}, and extracts and re-apply the constructor \ensuremath{\Conid{Popcorn}} when necessary. With \ensuremath{\Conid{Popcorn}} being a \ensuremath{\mathbf{newtype}}, they
+can be optimized away in runtime. The interesting bits happen in compile type,
+on the added type information.
 
-\paragraph{\text{PING}: A First Example}
-In \Redis{}, \text{PING} does nothing but replies with
- \text{PONG} if the connection is alive. In Hedis,
- \ensuremath{\Varid{ping}} has type:
+The properties of the state we care about are the set of currently allocated
+keys and their associated types. We will present, in Section~\ref{sec:type-level-dict}, techniques that allow us to specify
+properties such as ``the keys in the database are \ensuremath{\text{\tt \char34 A\char34}}, \ensuremath{\text{\tt \char34 B\char34}}, and \ensuremath{\text{\tt \char34 C\char34}},
+respectively associated to values of type \ensuremath{\Conid{Int}}, \ensuremath{\Conid{Char}}, and \ensuremath{\Conid{Bool}}.''
+For now, however, let us look at the simplest \Redis{} command.
 
-\begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Varid{ping}\mathbin{::}\Conid{Redis}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-
-Now with \ensuremath{\Conid{Popcorn}}, we could make our own version of
-\ensuremath{\Varid{ping}}\footnotemark
-
-\footnotetext{\ensuremath{\Varid{ping}} from Hedis is qualified with
-\ensuremath{\Conid{Hedis}} to prevent function name clashing in our code.}
-
+The command \text{PING} in \Redis{} does nothing but replies a message
+\text{PONG} if the connection is alive. In \Hedis{}, \ensuremath{\Varid{ping}} has type
+\ensuremath{\Conid{Redis}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status})}. The \Popcorn{} version of \ensuremath{\Varid{ping}} simply
+applys an additional constructor (functions from \Hedis{} are qualified with
+\ensuremath{\Conid{Hedis}} to prevent name clashing):
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{E}{@{}>{\hspre}l<{\hspost}@{}}%
 \>[B]{}\Varid{ping}\mathbin{::}\Conid{Popcorn}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
 \\
-\>[B]{}\Varid{ping}\mathrel{=}\Conid{Popcorn}\;\Varid{\Conid{Hedis}.ping}{}\<[E]%
+\>[B]{}\Varid{ping}\mathrel{=}\Conid{Popcorn}\;\Varid{\Conid{Hedis}.ping}~~.{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
-
-The dictionary \ensuremath{\Varid{xs}} in the type remains unaffected after the
- action, because \ensuremath{\Varid{ping}} does not affect any key-type
- bindings. To encode other commands that modifies key-type bindings, we need
- type-level functions to annotate those effects on the dictionary.
+Since \ensuremath{\Varid{ping}} does not alter the database, the postcondition and precondition
+are the same. Commands that are more interesting will be introduced after
+we present our type-level encoding of constraints on states.

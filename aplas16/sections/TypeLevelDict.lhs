@@ -8,18 +8,23 @@
 One of the challenges of statically ensuring type correctness of \Redis{},
 which also presents in other stateful languages, is that the type of the value
 associated to a key can be altered after updating. To ensure type correctness,
-we have to keep track of the (\Redis{}) types of all existing keys in a
-{\em dictionary} --- conceptually, a list of pairs of keys and \Redis{} types.
-Each \Redis{} command is embedded in \Popcorn{} as a monadic computation. The
-monad, to be presented in Section~\ref{sec:indexed-monads}, is indexed by
-the dictionaries before and after the computation. In a dependently typed
+we keep track of the types of all existing keys in a {\em dictionary} ---
+conceptually, an associate list, or a list of pairs of keys and \Redis{} types.
+For example, the dictionary |[("A",Int), ("B", Char), ("C", Bool)]| represents
+a predicate stating that ``the keys |"A"|, |"B"|, and |"C"| are respectively
+associated to values of type |Int|, |Char|, and |Bool|.''
+
+The dictionary mixes values (strings such as |"A"|, |"B"|) and types. Further
+more, as mentioned in Section~\ref{sec:indexed-monads}, the dictionaries are
+to be used parameters to the indexed monad |Popcorn|. In a dependently typed
 programming language (without the so-called ``phase distinction'' ---
 separation between types and terms), this would pose no problem. In Haskell
-however, the dictionaries, to index a monad, has to be a Haskell type as well.
+however, the dictionaries, to index a monad, has to be a type as well.
 
 In this section we describe how to construct a type-level dictionary, to be
-used with the indexed monad in Section~\ref{sec:indexed-monads}. More operations
-on the dictionary will be presented in Section~\ref{sec:type-level-fun}.
+used with the indexed monad in Section~\ref{sec:indexed-monads}.
+
+\subsection{Datatype Promotion}
 
 Haskell maintains the distinction between values, types, and kinds: values are
 categorized by types, and types are categorized by kinds. The kinds are relatively simple: |*| is the kind of all {\em lifted} types, while type
@@ -72,3 +77,168 @@ type Dict1 = TList (TPar ("A", Int), TPar ("B", "A")) {-"~~."-}
 \end{spec}
 All the entities defined above are types, where |Dict0| and |Dict1|
 have kind |[(Symbol, *)]|.
+
+\subsection{Type-Level Functions}
+
+Now that we can represent dictionaries as types, the next step is to define
+operations on them. A function that inserts an entry to a dictionary, for
+example, is a function from a type to a type. While it was shown that it is
+possible to simulate type-level functions using Haskell type
+classes~\cite{McBride:02:Faking}, in recent versions of GHC, {\em indexed type
+families}, or type families for short, are considered a cleaner solution.
+
+For example, compare conjunction |(&&)| and its type-level
+counterpart |And|:\\
+\noindent{\centering %\small
+\begin{minipage}[b]{0.35\linewidth}
+\begin{spec}
+(&&) :: Bool -> Bool -> Bool
+True  &&  True  = True
+a     &&  b     = False {-"~~,"-}
+\end{spec}
+\end{minipage}
+\begin{minipage}[b]{0.55\linewidth}
+\begin{spec}
+type family And (a :: Bool) (b :: Bool) :: Bool
+  where  And  True  True  = True
+         And  a     b     = False {-"~~."-}
+\end{spec}
+\end{minipage}
+}\\
+The lefthand side is a typical definition of |(&&)| by pattern matching.
+On the righthand side, |Bool| is not a type, but a type lifted to a kind,
+while |True| and |False| are types of kind |Bool|. The declaration says
+that |And| is a family of types, indexed by two parameters |a| and |b| of
+kind |Bool|. The type with index |True| and |True| is |True|, and all
+other indices lead to |False|. For our purpose, we can read |And| as a type-level function. Observe how it resembles the term-level |(&&)|.
+
+Note that type families in Haskell come in many flavors. Families can be
+defined for |data| and |type| synonym. They can appear inside type
+classes~\cite{tfclass,tfsynonym} or at toplevel. Toplevel type families
+can be open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we chose
+is top-level, closed type synonym family, since it allows overlapping
+instances, and we need none of the extensibility provided by open type
+families. Notice that the instance |And True True| could be subsumed under
+the more general instance, |And a b|. In a closed type family we may resolve
+the overlapping in order, just like how cases overlapping is resolved in term-level functions.
+
+%\subsection{Functions on Type-Level Dictionaries}
+
+We are now able to define operations on type-level dictionaries.
+Let's begin with dictionary lookup.
+\begin{spec}
+type family Get (xs :: [(Symbol, *)]) (s :: Symbol) :: * where
+    Get (TPar (s, x) :- xs) s  =  x
+    Get (TPar (t, x) :- xs) s  =  Get xs s {-"~~"-}
+\end{spec}
+The type-level function |Get| returns the entry associated with key |s| in the
+dictionary |xs|. Notice, in the first case, how type-level equality can be
+expressed by unifying type variables with the same name.
+Note also that |Get| is a partial function on types:
+|Get (TList (TPar ("A", Int))) "A"| evaluates to |Int|, but
+|Get (TList (TPar ("A", Int))) "B"| gets stuck.
+... and these types are computed at compile-time. It wouldn't make
+much sense for a type checker to crash and throw a ``Non-exhaustive'' error or
+be non-terminating.
+\todo{So, what exactly happens when we do the second?}
+
+We could make |Get| total, as we would at the term level, with |Maybe|:
+\begin{spec}
+type family Get (xs :: [(Symbol, *)]) (s :: Symbol) :: Maybe * where
+    Get NIL                 s = Nothing
+    Get (TPar(s, x) :- xs)  s = Just x
+    Get (TPar(t, x) :- xs)  s = Get xs s {-"~~."-}
+\end{spec}
+%
+Some other dictionary-related functions are defined in a similar fashion
+in Figure \ref{fig:dict-operations}. The function |Set| either updates an
+existing entry or inserts a new entry, |Del| removes an entry matching
+a given key, while |Member| checks whether a given key exists in the
+dictionary.
+
+\begin{figure}
+\begin{spec}
+-- inserts or updates an entry
+type family Set  (xs :: [(Symbol, *)]) (s :: Symbol) (x :: *) :: [(Symbol, *)] where
+    Set NIL                 s x = TList (TPar (s, x))
+    Set (TPar(s, y) :- xs)  s x = TPar (s, x) :- xs
+    Set (TPar(t, y) :- xs)  s x = TPar (t, y) :- Set xs s x
+
+-- removes an entry
+type family Del  (xs :: [(Symbol, *)]) (s :: Symbol) :: [(Symbol, *)] where
+    Del Nil                 s  = Nil
+    Del (TPar (s, y) :- xs) s  = xs
+    Del (TPar (t, y) :- xs) s  = TPar (t, y) :- Del xs s
+
+-- membership
+type family Member (xs :: [(Symbol, *)]) (s :: Symbol) :: Bool where
+    Member Nil                  s = False
+    Member (TPar(s, x) :- xs)   s = True
+    Member (TPar(t, x) :- xs)   s = Member xs s
+\end{spec}
+\caption{Some operations on type-level dictionaries.}
+\label{fig:dict-operations}
+\end{figure}
+
+\subsection{Proxies and Singleton Types}
+
+The \Hedis{} function |del :: [ByteString] -> Either Reply Integer| takes a list
+of keys (encoded to |ByteString|) and removes the entries having those keys in
+the database. For simplicity, we consider creating a \Popcorn{} counterpart
+that takes only one key. A first attempt may lead to something like the
+following:
+\begin{spec}
+del :: String -> Popcorn xs (Del xs ?) (Either Reply Integer)
+del key = Popcorn $ Hedis.del [encode key] {-"~~."-}
+\end{spec}
+At term-level, our |del| merely calls |Hedis.del|, with the help of |encode|
+that converts |key| to a |ByteString|. At type-level, if the status of the database before |del| is called is specified by |xs|, the status afterwards
+should be specified by |Del xs ?|. The question, however, is what to fill in
+the question mark. The string |key| is a runtime value. How do we pass it to
+the type level?
+
+\todo{revised up to here.}
+
+\begin{spec}
+del :: KnownSymbol s
+    => Proxy s
+    -> Popcorn xs (Del xs s) (Either Reply Integer)
+del key = Popcorn $ Hedis.del (encodeKey key)
+\end{spec}
+
+|KnownSymbol| is a class that gives the string associated
+ with a concrete type-level symbol, which can be retrieved with
+ |symbolVal|.\footnotemark
+ Where |encodeKey| converts |Proxy s| to
+ |ByteString|.
+\footnotetext{They are defined in |GHC.TypeLits|.}
+
+\begin{spec}
+encodeKey :: KnownSymbol s => Proxy s -> ByteString
+encodeKey = encode . symbolVal
+\end{spec}
+
+Since Haskell has a \emph{phase distinction}~\cite{phasedistinction}, types are
+ erased before runtime. It's impossible to obtain information directly from
+ types, we can only do this indirectly, with
+ \emph{singleton types, singletons}.
+
+A singleton type is a type that has only one instance, and the instance can be
+ think of as the representative of the type at the realm of runtime values.
+
+|Proxy|, as its name would suggest, can be used as
+ singletons. It's a phantom type that could be indexed with any type.
+
+\begin{spec}
+data Proxy t = Proxy
+\end{spec}
+
+In the type of |del|, the type variable
+ |s| is a |Symbol| that is decided by
+ the argument of type |Proxy s|.
+ To use |del|, we would have to apply it with a clumsy
+ term-level proxy like this:
+
+\begin{spec}
+del (Proxy :: Proxy "A")
+\end{spec}

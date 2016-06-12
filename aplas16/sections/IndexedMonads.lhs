@@ -5,37 +5,36 @@
 \section{Indexed Monads}
 \label{sec:indexed-monads}
 
-Stateful computations are often reasoned in a Hoare-logic style: each command
-is labelled by a \emph{precondition} and a \emph{postcondition}. If the former
-is satisfied before the command is executed, the latter is guaranteed to hold
-afterwards.
+Stateful computations are often reasoned using Hoare logic. A {\em Hoare triple}
+$\{P\} S \{Q\}$ denotes such a proposition: if the statement $S$ is executed in
+a state satisfying prediate $P$, when it terminates, the state must satisfy
+predicate $Q$. Predicates $P$ and $Q$ are respectively is called the
+\emph{precondition} and the \emph{postcondition} of the Hoare triple.
 
 In Haskell, stateful computations are represented by monads. In order to
 reason about their behaviors within the type system, we wish to label a state
-monad with its pre and postcondition. An \emph{indexed
-monad}~\cite{indexedmonad} (also called \emph{monadish} or
-\emph{parameterised monad}) is a monad that, in addition to the type of value
-it computes, takes two more type arguments representing an initial state and
-a final state, to be interpreted like a Hoare triple~\cite{kleisli}:
+monad with its pre and postcondition. An \emph{indexed monad}~%
+\cite{indexedmonad} (also called \emph{monadish} or \emph{parameterised monad})
+is a monad that, in addition to the type of value it computes, takes two more
+type arguments representing an initial state and a final state, to be
+interpreted like a Hoare triple~\cite{kleisli}:
 \begin{spec}
 class IMonad m where
     unit :: a -> m p p a
     bind :: m p q a -> (a -> m q r b) -> m p r b {-"~~."-}
 \end{spec}
 The intention is that a computation of type |m p q a| is a stateful computation
-such that if it starts execution in a state satisfying |p| and terminates, it
-yields a value of type |a|, and the new state satisfies |q|.
-The operator |unit| lifts a pure computation to a stateful computation that
-does not alter the state. In |x `bind` f|, a computation |x :: m p q a| must
-be chained before |f :: a -> m q r b|, which expects a value of type |a| and
-a state satisfying |q| and, if terminates, ends in a state satisfying |r|.
-The result is a monad |m p r b| --- a computation that, if executed in a state
-satisfying |p| and terminates, yields a value |b| and a state satisfying |r|.
+such that, if it starts execution in a state satisfying |p| and terminates, it
+yields a value of type |a|, and the new state satisfies |q|. The operator |unit|
+lifts a pure computation to a stateful computation that does not alter the
+state. In |x `bind` f|, a computation |x :: m p q a| is followed by
+|f :: a -> m q r b| --- the postcondition of |x| matches the precondition of
+the computation returned by |f|. The result is a monad |m p r b|.
 Indexed monads have been used ~\cite{typefun,staticresources} ... \todo{for what? Some discriptions here to properly cite them.}
 
 We define a new indexed monad |Popcorn| which, at term level, merely wraps
-|Redis| in an additional constructor. The purpose is to add the pre and
-postconditions at type level:
+|Redis| in an additional constructor. The purpose is to add the
+pre/postconditions at type level:
 \begin{spec}
 newtype Popcorn p q a = Popcorn { unPopcorn :: Redis a } {-"~~,"-}
 
@@ -43,29 +42,26 @@ instance IMonad Popcorn where
     unit = Popcorn . return
     bind m f = Popcorn (unPopcorn m >>= unPopcorn . f ) {-"~~."-}
 \end{spec}
-To execute a |Popcorn| program, simply apply it to |unPopcorn| to erase the additional type information and get back an ordinary \Hedis{} program.
+At term level, the |unit| and |bind| methods are not interesting: they merely
+make calls to |return| and |(>>=)| of |Redis|, and extracts and re-apply the constructor |Popcorn| when necessary. With |Popcorn| being a |newtype|, they
+can be optimized away in runtime. The interesting bits happen in compile type,
+on the added type information.
 
-\paragraph{\text{PING}: A First Example}
-In \Redis{}, \text{PING} does nothing but replies with
- \text{PONG} if the connection is alive. In Hedis,
- |ping| has type:
+The properties of the state we care about are the set of currently allocated
+keys and their associated types. We will present, in Section~\ref{sec:type-level-dict}, techniques that allow us to specify
+properties such as ``the keys in the database are |"A"|, |"B"|, and |"C"|,
+respectively associated to values of type |Int|, |Char|, and |Bool|.''
+For now, however, let us look at the simplest \Redis{} command.
 
-\begin{spec}
-ping :: Redis (Either Reply Status)
-\end{spec}
-
-Now with |Popcorn|, we could make our own version of
-|ping|\footnotemark
-
-\footnotetext{|ping| from Hedis is qualified with
-|Hedis| to prevent function name clashing in our code.}
-
+The command \text{PING} in \Redis{} does nothing but replies a message
+\text{PONG} if the connection is alive. In \Hedis{}, |ping| has type
+|Redis (Either Reply Status)|. The \Popcorn{} version of |ping| simply
+applys an additional constructor (functions from \Hedis{} are qualified with
+|Hedis| to prevent name clashing):
 \begin{spec}
 ping :: Popcorn xs xs (Either Reply Status)
-ping = Popcorn Hedis.ping
+ping = Popcorn Hedis.ping {-"~~."-}
 \end{spec}
-
-The dictionary |xs| in the type remains unaffected after the
- action, because |ping| does not affect any key-type
- bindings. To encode other commands that modifies key-type bindings, we need
- type-level functions to annotate those effects on the dictionary.
+Since |ping| does not alter the database, the postcondition and precondition
+are the same. Commands that are more interesting will be introduced after
+we present our type-level encoding of constraints on states.

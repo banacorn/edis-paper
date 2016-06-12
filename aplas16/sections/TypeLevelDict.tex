@@ -290,18 +290,23 @@
 One of the challenges of statically ensuring type correctness of \Redis{},
 which also presents in other stateful languages, is that the type of the value
 associated to a key can be altered after updating. To ensure type correctness,
-we have to keep track of the (\Redis{}) types of all existing keys in a
-{\em dictionary} --- conceptually, a list of pairs of keys and \Redis{} types.
-Each \Redis{} command is embedded in \Popcorn{} as a monadic computation. The
-monad, to be presented in Section~\ref{sec:indexed-monads}, is indexed by
-the dictionaries before and after the computation. In a dependently typed
+we keep track of the types of all existing keys in a {\em dictionary} ---
+conceptually, an associate list, or a list of pairs of keys and \Redis{} types.
+For example, the dictionary \ensuremath{[\mskip1.5mu (\text{\tt \char34 A\char34},\Conid{Int}),(\text{\tt \char34 B\char34},\Conid{Char}),(\text{\tt \char34 C\char34},\Conid{Bool})\mskip1.5mu]} represents
+a predicate stating that ``the keys \ensuremath{\text{\tt \char34 A\char34}}, \ensuremath{\text{\tt \char34 B\char34}}, and \ensuremath{\text{\tt \char34 C\char34}} are respectively
+associated to values of type \ensuremath{\Conid{Int}}, \ensuremath{\Conid{Char}}, and \ensuremath{\Conid{Bool}}.''
+
+The dictionary mixes values (strings such as \ensuremath{\text{\tt \char34 A\char34}}, \ensuremath{\text{\tt \char34 B\char34}}) and types. Further
+more, as mentioned in Section~\ref{sec:indexed-monads}, the dictionaries are
+to be used parameters to the indexed monad \ensuremath{\Conid{Popcorn}}. In a dependently typed
 programming language (without the so-called ``phase distinction'' ---
 separation between types and terms), this would pose no problem. In Haskell
-however, the dictionaries, to index a monad, has to be a Haskell type as well.
+however, the dictionaries, to index a monad, has to be a type as well.
 
 In this section we describe how to construct a type-level dictionary, to be
-used with the indexed monad in Section~\ref{sec:indexed-monads}. More operations
-on the dictionary will be presented in Section~\ref{sec:type-level-fun}.
+used with the indexed monad in Section~\ref{sec:indexed-monads}.
+
+\subsection{Datatype Promotion}
 
 Haskell maintains the distinction between values, types, and kinds: values are
 categorized by types, and types are categorized by kinds. The kinds are relatively simple: \ensuremath{\mathbin{*}} is the kind of all {\em lifted} types, while type
@@ -331,7 +336,7 @@ The situation of lists is similar: for all kind \ensuremath{\Varid{k}}, \ensurem
 all kind \ensuremath{\Varid{k}}, \ensuremath{[\mskip1.5mu \mskip1.5mu]\mathbin{::}[\mskip1.5mu \Varid{k}\mskip1.5mu]} is a type. Given a type \ensuremath{\Varid{x}}
 of kind \ensuremath{\Varid{k}} and a type \ensuremath{\Varid{xs}} of kind \ensuremath{[\mskip1.5mu \Varid{k}\mskip1.5mu]}, \ensuremath{\Varid{x}\mathbin{:}\Varid{xs}} is again a type of
 kind \ensuremath{[\mskip1.5mu \Varid{k}\mskip1.5mu]}. Formally, \ensuremath{(\mathbin{:})\mathbin{::}\Varid{k}\to [\mskip1.5mu \Varid{k}\mskip1.5mu]\to [\mskip1.5mu \Varid{k}\mskip1.5mu]}. For example,
-\ensuremath{\Conid{Int}\mathbin{\mbox{\textquotesingle}\!:}(\Conid{Char}\mathbin{\mbox{\textquotesingle}\!:}(\Conid{Bool}\mathbin{\mbox{\textquotesingle}\!:}\mbox{\textquotesingle}[]))} is a type having kind \ensuremath{[\mskip1.5mu \mathbin{*}\mskip1.5mu]} --- a list of
+\ensuremath{\Conid{Int}\mathbin{\mbox{\textquotesingle}\!:}(\Conid{Char}\mathbin{\mbox{\textquotesingle}\!:}(\Conid{Bool}\mathbin{\mbox{\textquotesingle}\!:}\mbox{\textquotesingle}[~]))} is a type having kind \ensuremath{[\mskip1.5mu \mathbin{*}\mskip1.5mu]} --- a list of
 (lifted) types. The optional quote denotes that the constructors are promoted.
 The same list can be denoted by a syntax sugar \ensuremath{\mbox{\textquotesingle}[\Conid{Int},\Conid{Char},\Conid{Bool}]}.
 
@@ -355,7 +360,7 @@ type-level associate lists:
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\mathbf{type}\;\Conid{DictEmpty}\mathrel{=}\mbox{\textquotesingle}[]~~,{}\<[E]%
+\>[B]{}\mathbf{type}\;\Conid{DictEmpty}\mathrel{=}\mbox{\textquotesingle}[~]~~,{}\<[E]%
 \\
 \>[B]{}\mathbf{type}\;\Conid{Dict0}\mathrel{=}\mbox{\textquotesingle}[\mbox{\textquotesingle}(\text{\tt \char34 key\char34},\Conid{Bool})]~~,{}\<[E]%
 \\
@@ -364,3 +369,295 @@ type-level associate lists:
 \end{hscode}\resethooks
 All the entities defined above are types, where \ensuremath{\Conid{Dict0}} and \ensuremath{\Conid{Dict1}}
 have kind \ensuremath{[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]}.
+
+\subsection{Type-Level Functions}
+
+Now that we can represent dictionaries as types, the next step is to define
+operations on them. A function that inserts an entry to a dictionary, for
+example, is a function from a type to a type. While it was shown that it is
+possible to simulate type-level functions using Haskell type
+classes~\cite{McBride:02:Faking}, in recent versions of GHC, {\em indexed type
+families}, or type families for short, are considered a cleaner solution.
+
+For example, compare conjunction \ensuremath{(\mathrel{\wedge})} and its type-level
+counterpart \ensuremath{\Conid{And}}:\\
+\noindent{\centering %\small
+\begin{minipage}[b]{0.35\linewidth}
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{7}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{7E}{@{}l@{}}%
+\column{11}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{17}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}(\mathrel{\wedge})\mathbin{::}\Conid{Bool}\to \Conid{Bool}\to \Conid{Bool}{}\<[E]%
+\\
+\>[B]{}\Conid{True}{}\<[7]%
+\>[7]{}\mathrel{\wedge}{}\<[7E]%
+\>[11]{}\Conid{True}{}\<[17]%
+\>[17]{}\mathrel{=}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\Varid{a}{}\<[7]%
+\>[7]{}\mathrel{\wedge}{}\<[7E]%
+\>[11]{}\Varid{b}{}\<[17]%
+\>[17]{}\mathrel{=}\Conid{False}~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\end{minipage}
+\begin{minipage}[b]{0.55\linewidth}
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{10}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{21}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{27}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{And}\;(\Varid{a}\mathbin{::}\Conid{Bool})\;(\Varid{b}\mathbin{::}\Conid{Bool})\mathbin{::}\Conid{Bool}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\mathbf{where}\;{}\<[10]%
+\>[10]{}\Conid{And}\;{}\<[15]%
+\>[15]{}\Conid{True}\;{}\<[21]%
+\>[21]{}\Conid{True}{}\<[27]%
+\>[27]{}\mathrel{=}\Conid{True}{}\<[E]%
+\\
+\>[10]{}\Conid{And}\;{}\<[15]%
+\>[15]{}\Varid{a}\;{}\<[21]%
+\>[21]{}\Varid{b}{}\<[27]%
+\>[27]{}\mathrel{=}\Conid{False}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\end{minipage}
+}\\
+The lefthand side is a typical definition of \ensuremath{(\mathrel{\wedge})} by pattern matching.
+On the righthand side, \ensuremath{\Conid{Bool}} is not a type, but a type lifted to a kind,
+while \ensuremath{\Conid{True}} and \ensuremath{\Conid{False}} are types of kind \ensuremath{\Conid{Bool}}. The declaration says
+that \ensuremath{\Conid{And}} is a family of types, indexed by two parameters \ensuremath{\Varid{a}} and \ensuremath{\Varid{b}} of
+kind \ensuremath{\Conid{Bool}}. The type with index \ensuremath{\Conid{True}} and \ensuremath{\Conid{True}} is \ensuremath{\Conid{True}}, and all
+other indices lead to \ensuremath{\Conid{False}}. For our purpose, we can read \ensuremath{\Conid{And}} as a type-level function. Observe how it resembles the term-level \ensuremath{(\mathrel{\wedge})}.
+
+Note that type families in Haskell come in many flavors. Families can be
+defined for \ensuremath{\mathbf{data}} and \ensuremath{\mathbf{type}} synonym. They can appear inside type
+classes~\cite{tfclass,tfsynonym} or at toplevel. Toplevel type families
+can be open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we chose
+is top-level, closed type synonym family, since it allows overlapping
+instances, and we need none of the extensibility provided by open type
+families. Notice that the instance \ensuremath{\Conid{And}\;\Conid{True}\;\Conid{True}} could be subsumed under
+the more general instance, \ensuremath{\Conid{And}\;\Varid{a}\;\Varid{b}}. In a closed type family we may resolve
+the overlapping in order, just like how cases overlapping is resolved in term-level functions.
+
+%\subsection{Functions on Type-Level Dictionaries}
+
+We are now able to define operations on type-level dictionaries.
+Let's begin with dictionary lookup.
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{32}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{32E}{@{}l@{}}%
+\column{35}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Get}\;(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{s}\mathbin{::}\Conid{Symbol})\mathbin{::}\mathbin{*}\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mbox{\textquotesingle}(\Varid{s},\Varid{x})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;\Varid{s}{}\<[32]%
+\>[32]{}\mathrel{=}{}\<[32E]%
+\>[35]{}\Varid{x}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mbox{\textquotesingle}(\Varid{t},\Varid{x})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;\Varid{s}{}\<[32]%
+\>[32]{}\mathrel{=}{}\<[32E]%
+\>[35]{}\Conid{Get}\;\Varid{xs}\;\Varid{s}~~{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+The type-level function \ensuremath{\Conid{Get}} returns the entry associated with key \ensuremath{\Varid{s}} in the
+dictionary \ensuremath{\Varid{xs}}. Notice, in the first case, how type-level equality can be
+expressed by unifying type variables with the same name.
+Note also that \ensuremath{\Conid{Get}} is a partial function on types:
+\ensuremath{\Conid{Get}\;\mbox{\textquotesingle}[\mbox{\textquotesingle}(\text{\tt \char34 A\char34},\Conid{Int})]\;\text{\tt \char34 A\char34}} evaluates to \ensuremath{\Conid{Int}}, but
+\ensuremath{\Conid{Get}\;\mbox{\textquotesingle}[\mbox{\textquotesingle}(\text{\tt \char34 A\char34},\Conid{Int})]\;\text{\tt \char34 B\char34}} gets stuck.
+... and these types are computed at compile-time. It wouldn't make
+much sense for a type checker to crash and throw a ``Non-exhaustive'' error or
+be non-terminating.
+\todo{So, what exactly happens when we do the second?}
+
+We could make \ensuremath{\Conid{Get}} total, as we would at the term level, with \ensuremath{\Conid{Maybe}}:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Get}\;(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{s}\mathbin{::}\Conid{Symbol})\mathbin{::}\Conid{Maybe}\mathbin{*}\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;\mbox{\textquotesingle}[~]\;{}\<[29]%
+\>[29]{}\Varid{s}\mathrel{=}\Conid{Nothing}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mbox{\textquotesingle}(\Varid{s},\Varid{x})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[29]%
+\>[29]{}\Varid{s}\mathrel{=}\Conid{Just}\;\Varid{x}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Get}\;(\mbox{\textquotesingle}(\Varid{t},\Varid{x})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[29]%
+\>[29]{}\Varid{s}\mathrel{=}\Conid{Get}\;\Varid{xs}\;\Varid{s}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+%
+Some other dictionary-related functions are defined in a similar fashion
+in Figure \ref{fig:dict-operations}. The function \ensuremath{\Conid{Set}} either updates an
+existing entry or inserts a new entry, \ensuremath{\Conid{Del}} removes an entry matching
+a given key, while \ensuremath{\Conid{Member}} checks whether a given key exists in the
+dictionary.
+
+\begin{figure}
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{18}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{29}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{32}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{33}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mbox{\onelinecomment  inserts or updates an entry}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Set}\;{}\<[18]%
+\>[18]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{s}\mathbin{::}\Conid{Symbol})\;(\Varid{x}\mathbin{::}\mathbin{*})\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Set}\;\mbox{\textquotesingle}[~]\;{}\<[29]%
+\>[29]{}\Varid{s}\;\Varid{x}\mathrel{=}\mbox{\textquotesingle}[\mbox{\textquotesingle}(\Varid{s},\Varid{x})]{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Set}\;(\mbox{\textquotesingle}(\Varid{s},\Varid{y})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[29]%
+\>[29]{}\Varid{s}\;\Varid{x}\mathrel{=}\mbox{\textquotesingle}(\Varid{s},\Varid{x})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Set}\;(\mbox{\textquotesingle}(\Varid{t},\Varid{y})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[29]%
+\>[29]{}\Varid{s}\;\Varid{x}\mathrel{=}\mbox{\textquotesingle}(\Varid{t},\Varid{y})\mathbin{\mbox{\textquotesingle}\!:}\Conid{Set}\;\Varid{xs}\;\Varid{s}\;\Varid{x}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mbox{\onelinecomment  removes an entry}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Del}\;{}\<[18]%
+\>[18]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{s}\mathbin{::}\Conid{Symbol})\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Del}\;\Conid{Nil}\;{}\<[29]%
+\>[29]{}\Varid{s}{}\<[32]%
+\>[32]{}\mathrel{=}\Conid{Nil}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Del}\;(\mbox{\textquotesingle}(\Varid{s},\Varid{y})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;\Varid{s}{}\<[32]%
+\>[32]{}\mathrel{=}\Varid{xs}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Del}\;(\mbox{\textquotesingle}(\Varid{t},\Varid{y})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;\Varid{s}{}\<[32]%
+\>[32]{}\mathrel{=}\mbox{\textquotesingle}(\Varid{t},\Varid{y})\mathbin{\mbox{\textquotesingle}\!:}\Conid{Del}\;\Varid{xs}\;\Varid{s}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mbox{\onelinecomment  membership}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{Member}\;(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{s}\mathbin{::}\Conid{Symbol})\mathbin{::}\Conid{Bool}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Member}\;\Conid{Nil}\;{}\<[33]%
+\>[33]{}\Varid{s}\mathrel{=}\Conid{False}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Member}\;(\mbox{\textquotesingle}(\Varid{s},\Varid{x})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[33]%
+\>[33]{}\Varid{s}\mathrel{=}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{Member}\;(\mbox{\textquotesingle}(\Varid{t},\Varid{x})\mathbin{\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[33]%
+\>[33]{}\Varid{s}\mathrel{=}\Conid{Member}\;\Varid{xs}\;\Varid{s}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\caption{Some operations on type-level dictionaries.}
+\label{fig:dict-operations}
+\end{figure}
+
+\subsection{Proxies and Singleton Types}
+
+The \Hedis{} function \ensuremath{\Varid{del}\mathbin{::}[\mskip1.5mu \Conid{ByteString}\mskip1.5mu]\to \Conid{Either}\;\Conid{Reply}\;\Conid{Integer}} takes a list
+of keys (encoded to \ensuremath{\Conid{ByteString}}) and removes the entries having those keys in
+the database. For simplicity, we consider creating a \Popcorn{} counterpart
+that takes only one key. A first attempt may lead to something like the
+following:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}\mathbin{::}\Conid{String}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\mathbin{?})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.del}\;[\mskip1.5mu \Varid{encodeKey}\;\Varid{key}\mskip1.5mu]~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+At term-level, our \ensuremath{\Varid{del}} merely calls \ensuremath{\Varid{\Conid{Hedis}.del}} (assuming that \ensuremath{\Varid{encodeKey}}
+converts \ensuremath{\Varid{key}} to a \ensuremath{\Conid{ByteString}}). At type-level, if the status of the database
+before \ensuremath{\Varid{del}} is called is specified by \ensuremath{\Varid{xs}}, the status after the execution
+should be specified by \ensuremath{\Conid{Del}\;\Varid{xs}\mathbin{?}}. The question, however, is what to fill in
+the question mark. The string \ensuremath{\Varid{key}} is a runtime value. How do we pass it to
+the type level?
+
+\todo{revised up to here.}
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}\mathbin{::}\Conid{KnownSymbol}\;\Varid{s}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Rightarrow \Conid{Proxy}\;\Varid{s}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\to \Conid{Popcorn}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{s})\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Popcorn}\mathbin{\$}\Varid{\Conid{Hedis}.del}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\ensuremath{\Conid{KnownSymbol}} is a class that gives the string associated
+ with a concrete type-level symbol, which can be retrieved with
+ \ensuremath{\Varid{symbolVal}}.\footnotemark
+ Where \ensuremath{\Varid{encodeKey}} converts \ensuremath{\Conid{Proxy}\;\Varid{s}} to
+ \ensuremath{\Conid{ByteString}}.
+\footnotetext{They are defined in \ensuremath{\Conid{\Conid{GHC}.TypeLits}}.}
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{encodeKey}\mathbin{::}\Conid{KnownSymbol}\;\Varid{s}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{ByteString}{}\<[E]%
+\\
+\>[B]{}\Varid{encodeKey}\mathrel{=}\Varid{encode}\mathbin{\cdot}\Varid{symbolVal}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+Since Haskell has a \emph{phase distinction}~\cite{phasedistinction}, types are
+ erased before runtime. It's impossible to obtain information directly from
+ types, we can only do this indirectly, with
+ \emph{singleton types, singletons}.
+
+A singleton type is a type that has only one instance, and the instance can be
+ think of as the representative of the type at the realm of runtime values.
+
+\ensuremath{\Conid{Proxy}}, as its name would suggest, can be used as
+ singletons. It's a phantom type that could be indexed with any type.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{Proxy}\;\Varid{t}\mathrel{=}\Conid{Proxy}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+In the type of \ensuremath{\Varid{del}}, the type variable
+ \ensuremath{\Varid{s}} is a \ensuremath{\Conid{Symbol}} that is decided by
+ the argument of type \ensuremath{\Conid{Proxy}\;\Varid{s}}.
+ To use \ensuremath{\Varid{del}}, we would have to apply it with a clumsy
+ term-level proxy like this:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34}){}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
