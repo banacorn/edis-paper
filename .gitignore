@@ -20,3 +20,10 @@ paper.pyg
 *.pdf
 *.ptb
 
+Assertions.tex
+Constraints.tex
+Discussions.tex
+IndexedMonads.tex
+Introduction.tex
+PolyRedis.tex
+TypeLevelDict.tex
