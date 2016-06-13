@@ -27,7 +27,8 @@ used with the indexed monad in Section~\ref{sec:indexed-monads}.
 \subsection{Datatype Promotion}
 
 Haskell maintains the distinction between values, types, and kinds: values are
-categorized by types, and types are categorized by kinds. The kinds are relatively simple: |*| is the kind of all {\em lifted} types, while type
+categorized by types, and types are categorized by kinds. The kinds are
+relatively simple: |*| is the kind of all {\em lifted} types, while type
 constructors have kinds such as |* -> *|, |* -> * -> *|, etc. Consider the
 datatype definitions below:
 \begin{spec}
@@ -36,7 +37,8 @@ data Nat = Zero | Suc Nat {-"~~,\qquad"-} data [a] = [] | a : [a] {-"~~."-}
 The lefthand side is usually seen as having defined a type |Nat :: *|,
 and two value constructors |Zero :: Nat| and |Suc :: Nat -> Nat|. The righthand
 side is how Haskell lists are understood. The {\em kind} of |[.]| is |* -> *|,
-since it takes a lifted type |a| to a lifted type |[a]|. The two value constructors respectively have types |[] :: [a]| and |(:) :: a -> [a] ->
+since it takes a lifted type |a| to a lifted type |[a]|. The two value
+constructors respectively have types |[] :: [a]| and |(:) :: a -> [a] ->
 [a]|, for all type |a|.
 
 The GHC extension \emph{data kinds}~\cite{promotion}, however, automatically
@@ -45,7 +47,8 @@ described in the GHC manual what types are ``suitable''.} With the extension,
 the |data| definitions above has an alternative reading: |Nat| is a new kind,
 |Zero :: Nat| is a type having kind |Nat|, and |Suc :: Nat -> Nat| is a type
 constructor, taking a type in kind |Nat| to another type in |Nat|. Whether a
-constructor is promoted can often be inferred from the context. To be more specific, prefixing a constructor with a single quote, such as in |ZERO| and
+constructor is promoted can often be inferred from the context. To be more
+specific, prefixing a constructor with a single quote, such as in |ZERO| and
 |SUC|, denotes that it is promoted.
 
 The situation of lists is similar: for all kind |k|, |[k]| is also a kind. For
@@ -110,7 +113,8 @@ On the righthand side, |Bool| is not a type, but a type lifted to a kind,
 while |True| and |False| are types of kind |Bool|. The declaration says
 that |And| is a family of types, indexed by two parameters |a| and |b| of
 kind |Bool|. The type with index |True| and |True| is |True|, and all
-other indices lead to |False|. For our purpose, we can read |And| as a type-level function. Observe how it resembles the term-level |(&&)|.
+other indices lead to |False|. For our purpose, we can read |And| as a
+type-level function. Observe how it resembles the term-level |(&&)|.
 
 Note that type families in Haskell come in many flavors. Families can be
 defined for |data| and |type| synonym. They can appear inside type
@@ -120,7 +124,8 @@ is top-level, closed type synonym family, since it allows overlapping
 instances, and we need none of the extensibility provided by open type
 families. Notice that the instance |And True True| could be subsumed under
 the more general instance, |And a b|. In a closed type family we may resolve
-the overlapping in order, just like how cases overlapping is resolved in term-level functions.
+the overlapping in order, just like how cases overlapping is resolved in
+term-level functions.
 
 %\subsection{Functions on Type-Level Dictionaries}
 
@@ -188,57 +193,52 @@ the database. For simplicity, we consider creating a \Edis{} counterpart
 that takes only one key. A first attempt may lead to something like the
 following:
 \begin{spec}
-del :: String -> Edis xs (Del xs ?) (Either Reply Integer)
-del key = Edis $ Hedis.del [encode key] {-"~~."-}
+del :: String -> Edis xs (Del xs {-"~"-}?) (Either Reply Integer)
+del key = Edis $ Hedis.del [encode key] {-"~~,"-}
 \end{spec}
-At term-level, our |del| merely calls |Hedis.del|, with the help of |encode|
-that converts |key| to a |ByteString|. At type-level, if the status of the database before |del| is called is specified by |xs|, the status afterwards
-should be specified by |Del xs ?|. The question, however, is what to fill in
-the question mark. The string |key| is a runtime value. How do we pass it to
-the type level?
+where the function |encode|, which we will see again later, converts |String|
+to |ByteString| here. At term-level, our |del| merely calls |Hedis.del|. At
+type-level, if the status of the database before |del| is called is specified
+by the dictionary |xs|, the status afterwards should be specified by
+|Del xs {-"~"-}?|. The question, however, is what to fill in place of the
+question mark. It cannot be |Del xs key|, since |key| is a runtime value and
+not a type. How do we pass it a runtime value to type-level?
 
-\todo{revised up to here.}
+In a language with phase distinction like Haskell, it is certainly impossible
+to pass the value |key| to the type checker if it truly is a runtime value, for
+example, a string read from the user. If the value of |key| can be determined
+statically, however, {\em singleton types} can be used to represent a type
+as a value, thus build a connection between the two realms.
 
+A singleton type is a type that has only one term. When the term is built, it
+carries a type that can be inspected by the type checker. The term can be think
+of as a representative of the type at the realm of runtime values. For our
+purpose, we will use the following type |Proxy|:
 \begin{spec}
-del :: KnownSymbol s
-    => Proxy s
-    -> Edis xs (Del xs s) (Either Reply Integer)
-del key = Edis $ Hedis.del (encodeKey key)
+data Proxy t = Proxy {-"~~."-}
 \end{spec}
-
-|KnownSymbol| is a class that gives the string associated
- with a concrete type-level symbol, which can be retrieved with
- |symbolVal|.\footnotemark
- Where |encodeKey| converts |Proxy s| to
- |ByteString|.
-\footnotetext{They are defined in |GHC.TypeLits|.}
-
+For every type |t|, |Proxy t| is a type that has only one term: |Proxy|.
+\footnote{While giving the same name to both the type and the term can be very
+confusing, it is unfortunately a common practice in the Haskell community.}
+To call |del|, instead of passing a key as a |String|, we give it a proxy:
 \begin{spec}
-encodeKey :: KnownSymbol s => Proxy s -> ByteString
-encodeKey = encode . symbolVal
+del (Proxy :: Proxy "A") {-"~~,"-}
 \end{spec}
+where |"A"| is not a value, but a string lifted to a type (of kind |Symbol|).
+Now that the type check has access to the key, the type of |del| could be
+something alone the line of |del :: Proxy s -> Edis xs (Del xs s) ...|.
 
-Since Haskell has a \emph{phase distinction}~\cite{phasedistinction}, types are
- erased before runtime. It's impossible to obtain information directly from
- types, we can only do this indirectly, with
- \emph{singleton types, singletons}.
-
-A singleton type is a type that has only one instance, and the instance can be
- think of as the representative of the type at the realm of runtime values.
-
-|Proxy|, as its name would suggest, can be used as
- singletons. It's a phantom type that could be indexed with any type.
-
+The next problem is that, |del|, at term level, gets only a value constructor
+|Proxy| without further information, while it needs to pass a |ByteString| key
+to |Hedis.del|. Every concrete string literal lifted to a type, for example
+|"A"|, belongs to a type class |KnownSymbol|. For all type |n| in |KnownSymbol|,
+the function |symbolVal|:
+< symbolVal :: KnownSymbol n => proxy n -> String {-"~~,"-}
+retrieves the string associated with a type-level literal that is known at
+compile time. In summary, |del| can be implemented as:
 \begin{spec}
-data Proxy t = Proxy
+del  :: KnownSymbol s
+     => Proxy s -> Edis xs (Del xs s) (Either Reply Integer)
+del key = Edis (Hedis.del [encodeKey key])  {-"~~,"-}
 \end{spec}
-
-In the type of |del|, the type variable
- |s| is a |Symbol| that is decided by
- the argument of type |Proxy s|.
- To use |del|, we would have to apply it with a clumsy
- term-level proxy like this:
-
-\begin{spec}
-del (Proxy :: Proxy "A")
-\end{spec}
+where |encodeKey = encode . symbolVal|.
