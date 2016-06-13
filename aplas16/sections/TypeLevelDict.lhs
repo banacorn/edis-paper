@@ -145,7 +145,8 @@ Note also that |Get| is a partial function on types:
 ... and these types are computed at compile-time. It wouldn't make
 much sense for a type checker to crash and throw a ``Non-exhaustive'' error or
 be non-terminating.
-\todo{So, what exactly happens when we do the second?}
+\todo{So, what exactly happens when we have |Get (TList (TPar ("A", Int))) "B"|
+in some type?}
 
 We could make |Get| total, as we would at the term level, with |Maybe|:
 \begin{spec}
@@ -220,12 +221,13 @@ data Proxy t = Proxy {-"~~."-}
 For every type |t|, |Proxy t| is a type that has only one term: |Proxy|.
 \footnote{While giving the same name to both the type and the term can be very
 confusing, it is unfortunately a common practice in the Haskell community.}
-To call |del|, instead of passing a key as a |String|, we give it a proxy:
+To call |del|, instead of passing a key as a |String|, we give it a proxy with
+a specified type:
 \begin{spec}
 del (Proxy :: Proxy "A") {-"~~,"-}
 \end{spec}
 where |"A"| is not a value, but a string lifted to a type (of kind |Symbol|).
-Now that the type check has access to the key, the type of |del| could be
+Now that the type checker has access to the key, the type of |del| could be
 something alone the line of |del :: Proxy s -> Edis xs (Del xs s) ...|.
 
 The next problem is that, |del|, at term level, gets only a value constructor
