@@ -76,7 +76,7 @@ encode  :: Serialize a => a -> ByteString {-"~~,"-}
 decode  :: Serialize a => ByteString -> Either String a {-"~~."-}
 \end{spec}
 
-\subsection{Storing Primitive Dataypes Other Than Strings}
+\subsection{Storing Primitive Datatypes Other Than Strings}
 \label{sec:polymorphic-redis}
 
 As mentioned before, while \Redis{} provide a number of container types
@@ -114,54 +114,7 @@ with an entry |TPar ("A", StringOf Bool)|: if |"A"| is not in the dictionary,
 the entry is added; otherwise the old type of |"A"| is updated to
 |StringOf Bool|.
 
-%
-% \subsection{Denoting Containers}
-% Most Redis commands only work with a certain type of these containers. To
-%  annotate what container a key is associated with, we introduce these types for
-%  the universe of containers.
-%
-% \begin{spec}
-% data Strings
-% data Lists
-% data Sets
-% ...
-% \end{spec}
-%
-% \text{SET} stores a string, regardless the datatype the key was
-%  associated with. Now we could implement \text{SET} like this:
-%
-% \begin{spec}
-% set :: KnownSymbol s
-%     => Proxy s
-%     -> ByteString       -- data to store
-%     -> Edis xs (Set xs s Strings) (Either Reply Status)
-% set key val = Edis $ Hedis.set (encodeKey key) val
-% \end{spec}
-%
-% After \text{SET}, the key will be associated with
-%  |Strings| in the dictionary, indicating that it's a string.
-%
-% \subsection{Automatic Data Serialization}
-%
-% But in the real world, raw binary strings are hardly useful, people would
-%  usually serialize their data into strings before storing them, and deserialize
-%  them back when in need.
-%
-% Instead of letting users writing these boilerplates, we can do these
-%  serializations/deserializations for them.
-%
-% Which would do all the works for us, as long as the datatype it's handling is
-%  an instance of class |Serialize|.\footnotemark
-%
-% \footnotetext{The methods of |Serialize| will have default
-%  generic implementations for all datatypes with some language extensions
-%  enabled, no sweat!}
-
-% \subsection{Extending container types}
-
-%\subsection{Handling \text{INCR}}
-
-\Redis{} commands \texttt{INCR} reads the string associated with the given key,
+\Redis{} command \texttt{INCR} reads the string associated with the given key,
 parse it as an integer, and increments it, before storing it back. The command
 \texttt{INCRBYFLOAT} increments the floating number, associated to the given
 key. They can be
@@ -174,6 +127,107 @@ incrbyfloat  :: (KnownSymbol s, Get xs s ~ Just (StringOf Double))
              => Proxy s -> Double -> Edis xs xs (Either Reply Double)
 incrbyfloat key eps = Edis $ Hedis.incrbyfloat (encodeKey key) eps {-"~~."-}
 \end{spec}
-Note the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
+Notice the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
 that the intended type of value associated with key |s| must respectively be
 |Integer| and |Double|.
+
+\todo{Some more interesting functions that uses IF and FromJust, etc.
+What about |lset|?}
+
+\subsection{Constraint Disjunctions}
+
+In the following example, \texttt{LPUSH} appends a string \texttt{"bar"} to the
+list associated to \texttt{some-list}, or creates a list if \texttt{some-list}
+does not yet present. The command \texttt{LLEN} then returns the length of
+the list. If the key passed to \texttt{LLEN} is not associated to a list,
+it signals an error.
+\begin{verbatim}
+redis> LPUSH some-list bar
+(integer) 1
+redis> LLEN some-list
+(integer) 1
+redis> SET some-string foo
+OK
+redis> LLEN some-string
+(error) WRONGTYPE Operation against a key holding
+the wrong kind of value
+\end{verbatim}
+One may give |llen| this type:
+\begin{spec}
+llen  :: (KnownSymbol s, Get xs s ~ Just (ListOf x))
+      => Proxy s -> Edis xs xs (Either Reply Integer)
+llen key = Edis $ Hedis.llen (encodeKey key) {-"~~."-}
+\end{spec}
+However, this is not an accurate specification of \texttt{LLEN} in \Redis{} ---
+\texttt{LLEN} also accepts keys that do not exist, and replies with \texttt{0}:
+\begin{verbatim}
+redis> LLEN nonexistent
+(integer) 0
+\end{verbatim}
+What we wish to have in the class constraint of |llen| is thus a predicate
+equivalent to |Get xs s == Just (ListOf x) |||| not (Member xs
+s)|. The situation is the same with |lpush|: it returns normally either when
+the key is associated to a list or does not exist at all, while signaling an
+error when the associated value is not a list.
+
+Unfortunately, expressing disjunctions in constraints is much more difficult
+than expressing conjunctions. To impose a class constraint |P && Q|, one may
+simply put them both in the type: |(P, Q) => ...|. To express top-level
+constraints
+
+\todo{why cite \cite{singletons} here?}
+
+We could achieve this simply by translating the semantics we want to the
+ domain of Boolean, with type-level boolean functions such as
+|(&&)|,
+|(||)|, |Not|,
+|(==)|, etc.\footnotemark To avoid
+
+\footnotetext{Available in \text{Data.Type.Bool} and
+ \text{Data.Type.Equality}}
+
+\begin{spec}
+Get xs s == Just (ListOf x) || Not (Member xs s)
+\end{spec}
+
+To avoid addressing the type of value (as it may not exist at all), we defined
+ an auxiliary predicate |IsList :: Maybe * -> Bool| to
+ replace the former part.
+
+\begin{spec}
+IsList (Get xs s) || Not (Member xs s)
+\end{spec}
+
+The type expression above has kind |Bool|, we could make it
+ a type constraint by asserting equality.
+
+\begin{spec}
+(IsList (Get xs s) || Not (Member xs s)) ~ True
+\end{spec}
+
+With \emph{constraint kind}, a recent addition to GHC, type constraints now has
+ its own kind: |Constraint|. That means type constraints
+ are not restricted to the left side of a |=>| anymore,
+ they could appear in anywhere that accepts something of kind
+ |Constraint|, and any type that has kind
+ |Constraint| can also be used as a type constraint.
+ \footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
+
+As many other list-related commands also have this ``List or nothing'' semantics,
+ we could abstract the lengthy type constraint above and give it an alias with
+ type synonym.
+
+\begin{spec}
+ListOrNX xs s =
+    (IsList (Get xs s) || Not (Member xs s)) ~ True
+\end{spec}
+
+The complete implementation of \text{LLEN} with
+|ListOrNX| would become:
+
+\begin{spec}
+llen :: (KnownSymbol s, ListOrNX xs s)
+        => Proxy s
+        -> Edis xs xs (Either Reply Integer)
+llen key = Edis $ Hedis.llen (encodeKey key)
+\end{spec}
