@@ -8,7 +8,7 @@
 To rule out programs with undesired properties, certain constraints must be
 imposed, on what arguments they can take, or what preconditions they must hold.
 
-Consider the following example: \text{LLEN} returns the length of
+Consider the following example: \texttt{LLEN} returns the length of
  the list associated with a key, else raises a type error.
 
 \begin{verbatim}

@@ -53,8 +53,8 @@ properties such as ``the keys in the database are |"A"|, |"B"|, and |"C"|,
 respectively associated to values of type |Int|, |Char|, and |Bool|.''
 For now, however, let us look at the simplest \Redis{} command.
 
-The command \text{PING} in \Redis{} does nothing but replies a message
-\text{PONG} if the connection is alive. In \Hedis{}, |ping| has type
+The command \texttt{PING} in \Redis{} does nothing but replies a message
+\texttt{PONG} if the connection is alive. In \Hedis{}, |ping| has type
 |Redis (Either Reply Status)|. The \Edis{} version of |ping| simply
 applys an additional constructor (functions from \Hedis{} are qualified with
 |Hedis| to prevent name clashing):

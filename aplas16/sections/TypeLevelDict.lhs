@@ -9,17 +9,18 @@ One of the challenges of statically ensuring type correctness of \Redis{},
 which also presents in other stateful languages, is that the type of the value
 associated to a key can be altered after updating. To ensure type correctness,
 we keep track of the types of all existing keys in a {\em dictionary} ---
-conceptually, an associate list, or a list of pairs of keys and \Redis{} types.
-For example, the dictionary |[("A",Int), ("B", Char), ("C", Bool)]| represents
-a predicate stating that ``the keys |"A"|, |"B"|, and |"C"| are respectively
-associated to values of type |Int|, |Char|, and |Bool|.''
+conceptually, an associate list, or a list of pairs of keys and some encoding of
+types. For example, we may want the dictionary |[("A",Int), ("B", Char), ("C",
+Bool)]| to represent a predicate stating that ``the keys |"A"|, |"B"|, and |"C"|
+are respectively associated to values of type |Int|, |Char|, and |Bool|.''
 
-The dictionary mixes values (strings such as |"A"|, |"B"|) and types. Further
-more, as mentioned in Section~\ref{sec:indexed-monads}, the dictionaries are
-to be used parameters to the indexed monad |Edis|. In a dependently typed
-programming language (without the so-called ``phase distinction'' ---
-separation between types and terms), this would pose no problem. In Haskell
-however, the dictionaries, to index a monad, has to be a type as well.
+The dictionary above mixes values (strings such as |"A"|, |"B"|) and types.
+Further more, as mentioned in Section~\ref{sec:indexed-monads}, the
+dictionaries will be parameters to the indexed monad |Edis|. In a
+dependently typed programming language (without the so-called ``phase
+distinction'' --- separation between types and terms), this would pose no
+problem. In Haskell however, the dictionaries, to index a monad, has to be a
+type as well.
 
 In this section we describe how to construct a type-level dictionary, to be
 used with the indexed monad in Section~\ref{sec:indexed-monads}.
@@ -29,7 +30,7 @@ used with the indexed monad in Section~\ref{sec:indexed-monads}.
 Haskell maintains the distinction between values, types, and kinds: values are
 categorized by types, and types are categorized by kinds. The kinds are
 relatively simple: |*| is the kind of all {\em lifted} types, while type
-constructors have kinds such as |* -> *|, |* -> * -> *|, etc. Consider the
+constructors have kinds such as |* -> *|, or |* -> * -> *|, etc. Consider the
 datatype definitions below:
 \begin{spec}
 data Nat = Zero | Suc Nat {-"~~,\qquad"-} data [a] = [] | a : [a] {-"~~."-}
@@ -47,9 +48,9 @@ described in the GHC manual what types are ``suitable''.} With the extension,
 the |data| definitions above has an alternative reading: |Nat| is a new kind,
 |Zero :: Nat| is a type having kind |Nat|, and |Suc :: Nat -> Nat| is a type
 constructor, taking a type in kind |Nat| to another type in |Nat|. Whether a
-constructor is promoted can often be inferred from the context. To be more
-specific, prefixing a constructor with a single quote, such as in |ZERO| and
-|SUC|, denotes that it is promoted.
+constructor is promoted can often be inferred from the context. When one needs
+to be more specific, prefixing a constructor with a single quote, such as in
+|ZERO| and |SUC|, denotes that it is promoted.
 
 The situation of lists is similar: for all kind |k|, |[k]| is also a kind. For
 all kind |k|, |[] :: [k]| is a type. Given a type |x|
@@ -64,8 +65,8 @@ type, such as in |TPar (Int, Char)|, a type having kind |(*,*)|.
 
 Strings in Haskell are nothing but lists of |Char|s. Regarding promotion,
 however, a |String| can be promoted to a type having kind |Symbol|. |Symbol| is
-a type without a constructor: |data Symbol|,
-intended to be used as a promoted kind. In the expression:
+a type without a constructor: |data Symbol|, intended to be used as a promoted
+kind. In the expression:
 \begin{spec}
 "this is a type-level string literal" :: Symbol {-"~~,"-}
 \end{spec}
@@ -78,8 +79,9 @@ type DictEmpty = NIL {-"~~,"-}
 type Dict0 = TList (TPar ("key", Bool)) {-"~~,"-}
 type Dict1 = TList (TPar ("A", Int), TPar ("B", "A")) {-"~~."-}
 \end{spec}
-All the entities defined above are types, where |Dict0| and |Dict1|
-have kind |[(Symbol, *)]|.
+All the entities defined above are types, where |Dict0| has kind |[(Symbol,
+*)]|. In |Dict1|, while |Int| has kind |*| and |"A"| has kind |Symbol|, the former kind subsumes the later. Thus |Dict1| also has kind |[(Symbol, *)]|.
+
 
 \subsection{Type-Level Functions}
 
@@ -114,14 +116,14 @@ while |True| and |False| are types of kind |Bool|. The declaration says
 that |And| is a family of types, indexed by two parameters |a| and |b| of
 kind |Bool|. The type with index |True| and |True| is |True|, and all
 other indices lead to |False|. For our purpose, we can read |And| as a
-type-level function. Observe how it resembles the term-level |(&&)|.
+function from types to types --- observe how it resembles the term-level |(&&)|.
 
 Note that type families in Haskell come in many flavors. Families can be
 defined for |data| and |type| synonym. They can appear inside type
 classes~\cite{tfclass,tfsynonym} or at toplevel. Toplevel type families
 can be open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we chose
 is top-level, closed type synonym family, since it allows overlapping
-instances, and we need none of the extensibility provided by open type
+instances, since need none of the extensibility provided by open type
 families. Notice that the instance |And True True| could be subsumed under
 the more general instance, |And a b|. In a closed type family we may resolve
 the overlapping in order, just like how cases overlapping is resolved in
@@ -139,14 +141,11 @@ type family Get (xs :: [(Symbol, *)]) (s :: Symbol) :: * where
 The type-level function |Get| returns the entry associated with key |s| in the
 dictionary |xs|. Notice, in the first case, how type-level equality can be
 expressed by unifying type variables with the same name.
-Note also that |Get| is a partial function on types:
-|Get (TList (TPar ("A", Int))) "A"| evaluates to |Int|, but
-|Get (TList (TPar ("A", Int))) "B"| gets stuck.
-... and these types are computed at compile-time. It wouldn't make
-much sense for a type checker to crash and throw a ``Non-exhaustive'' error or
-be non-terminating.
-\todo{So, what exactly happens when we have |Get (TList (TPar ("A", Int))) "B"|
-in some type?}
+Note also that |Get| is a partial function on types: while
+|Get (TList (TPar ("A", Int))) "A"| evaluates to |Int|, when
+|Get (TList (TPar ("A", Int))) "B"| appears in a type expression, there are no
+applicable rules to reduce it. The expression thus stays as it is, and Haskell
+eventually signals an error.
 
 We could make |Get| total, as we would at the term level, with |Maybe|:
 \begin{spec}
@@ -185,62 +184,3 @@ type family Member (xs :: [(Symbol, *)]) (s :: Symbol) :: Bool where
 \caption{Some operations on type-level dictionaries.}
 \label{fig:dict-operations}
 \end{figure}
-
-\subsection{Proxies and Singleton Types}
-
-The \Hedis{} function |del :: [ByteString] -> Either Reply Integer| takes a list
-of keys (encoded to |ByteString|) and removes the entries having those keys in
-the database. For simplicity, we consider creating a \Edis{} counterpart
-that takes only one key. A first attempt may lead to something like the
-following:
-\begin{spec}
-del :: String -> Edis xs (Del xs {-"~"-}?) (Either Reply Integer)
-del key = Edis $ Hedis.del [encode key] {-"~~,"-}
-\end{spec}
-where the function |encode|, which we will see again later, converts |String|
-to |ByteString| here. At term-level, our |del| merely calls |Hedis.del|. At
-type-level, if the status of the database before |del| is called is specified
-by the dictionary |xs|, the status afterwards should be specified by
-|Del xs {-"~"-}?|. The question, however, is what to fill in place of the
-question mark. It cannot be |Del xs key|, since |key| is a runtime value and
-not a type. How do we pass it a runtime value to type-level?
-
-In a language with phase distinction like Haskell, it is certainly impossible
-to pass the value |key| to the type checker if it truly is a runtime value, for
-example, a string read from the user. If the value of |key| can be determined
-statically, however, {\em singleton types} can be used to represent a type
-as a value, thus build a connection between the two realms.
-
-A singleton type is a type that has only one term. When the term is built, it
-carries a type that can be inspected by the type checker. The term can be think
-of as a representative of the type at the realm of runtime values. For our
-purpose, we will use the following type |Proxy|:
-\begin{spec}
-data Proxy t = Proxy {-"~~."-}
-\end{spec}
-For every type |t|, |Proxy t| is a type that has only one term: |Proxy|.
-\footnote{While giving the same name to both the type and the term can be very
-confusing, it is unfortunately a common practice in the Haskell community.}
-To call |del|, instead of passing a key as a |String|, we give it a proxy with
-a specified type:
-\begin{spec}
-del (Proxy :: Proxy "A") {-"~~,"-}
-\end{spec}
-where |"A"| is not a value, but a string lifted to a type (of kind |Symbol|).
-Now that the type checker has access to the key, the type of |del| could be
-something alone the line of |del :: Proxy s -> Edis xs (Del xs s) ...|.
-
-The next problem is that, |del|, at term level, gets only a value constructor
-|Proxy| without further information, while it needs to pass a |ByteString| key
-to |Hedis.del|. Every concrete string literal lifted to a type, for example
-|"A"|, belongs to a type class |KnownSymbol|. For all type |n| in |KnownSymbol|,
-the function |symbolVal|:
-< symbolVal :: KnownSymbol n => proxy n -> String {-"~~,"-}
-retrieves the string associated with a type-level literal that is known at
-compile time. In summary, |del| can be implemented as:
-\begin{spec}
-del  :: KnownSymbol s
-     => Proxy s -> Edis xs (Del xs s) (Either Reply Integer)
-del key = Edis (Hedis.del [encodeKey key])  {-"~~,"-}
-\end{spec}
-where |encodeKey = encode . symbolVal|.

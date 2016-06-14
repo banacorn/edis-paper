@@ -5,12 +5,16 @@
 \section{Introduction}
 \label{sec:introduction}
 
-\Redis{}\footnote{\url{https://redis.io}} is an open source, in-memory data structure store, often used as database, cache and message broker. A \Redis{} datatype can be think of as a set of key-value pairs, where each value is associated with a binary-safe string key to identify and manipulate with.
-\Redis{} allows values of various types, including strings, hashes, lists, and sets, etc, to be stored, and provides a collection of of atomic \emph{commands} to manipulate these values.
+\Redis{}\footnote{\url{https://redis.io}} is an open source, in-memory data structure store, often used as database, cache, and message broker. A \Redis{} data store can be think of as a set of key-value pairs. The value can be a
+string, a list of strings, a set of strings, or a hash table of strings, etc.
+However, string is the only primitive datatype. Numbers, for example, have to be
+serialized to strings before being saved in the data store, and parsed back to
+numbers to be manipulated with.
 
-For an example, consider the following sequence of commands, entered through the interactive interface of \Redis{}. The keys \texttt{some-set} and \texttt{another-set}
-are both associated to a set. The two call to command \texttt{SADD} respectively
-adds three and two values to the two sets, before \texttt{SINTER} takes their intersection:
+For an example, consider the following sequence of commands, entered through the interactive interface of \Redis{}. The keys \texttt{some-set} and
+\texttt{another-set} are both associated to a set of strings. The two call to
+command \texttt{SADD} respectively adds three and two values to the two sets,
+before \texttt{SINTER} takes their intersection:
 \begin{verbatim}
 redis> SADD some-set a b c
 (integer) 3
@@ -20,12 +24,13 @@ redis> SINTER some-set another-set
 1) "a"
 2) "b"
 \end{verbatim}
+Note that the keys \texttt{some-set} and \texttt{another-set}, if not existing before the call to \texttt{SADD}, are created on site. The calls to
+\texttt{SADD} return the size of the set after completion of the command.
 
-Note that the keys \texttt{some-set} and \texttt{another-set}, if not existing before the call to \texttt{SADD}, are created on site. The call to
-\texttt{SADD} returns the size of the set after completion of the command.
-
-Many third party libraries provide interfaces that allow general purpose programming languages to access \Redis{} through its TCP protocol.
-For Haskell, the most popular library is \Hedis{}\footnote{\url{https://hackage.haskell.org/package/hedis}}.
+Many third party libraries provide interfaces for general purpose programming
+languages to access \Redis{} through its TCP protocol. For Haskell, the most
+popular library is
+\Hedis{}\footnote{\url{https://hackage.haskell.org/package/hedis}}.
 The following program implements the previous example:
 \begin{spec}
 program :: Redis (Either Reply [ByteString])
@@ -44,19 +49,15 @@ represented using Haskell |ByteString|. Values of other types must be encoded
 as |ByteString|s before being written to the database, and decoded after being
 read back.
 
-\footnotetext{\Hedis{} provides another kind of context, |RedisTx|, for \emph{transactions}, united with |Redis| under the class |RedisCtx|. We
+\footnotetext{\Hedis{} provides another kind of context, |RedisTx|, for
+\emph{transactions}, united with |Redis| under the class |RedisCtx|. We
 demonstrate only |Redis| in this paper.}
 
-%\paragraph{Motivation}
-%All binary strings are equal, but some binary strings are more equal than others.
-%While everything in \Redis{} is essentially a binary string, these strings
-%are treated differently.
-\Redis{} supports many different kind of data
-structures, such as strings, hashes, lists, etc. While they are all encoded as
-binary strings before being written to the database, most commands only works
-with data of certain types. In the following example, the key
-\texttt{some-string} is associated to string \texttt{foo} --- the command
-\texttt{SET} always associates a key to a string. The subsequent call to \texttt{SADD}, which adds a value to a set, thus causes a runtime error.
+
+Some commands only works with data of certain types. In the following example,
+the key \texttt{some-string} is associated to string \texttt{foo} --- the
+command \texttt{SET} always associates a key to a string. The subsequent call to
+\texttt{SADD}, which adds a value to a set, thus causes a runtime error.
 \begin{verbatim}
 redis> SET some-string foo
 OK
@@ -64,12 +65,10 @@ redis> SADD some-string bar
 (error) WRONGTYPE Operation against a key holding the wrong
 kind of value
 \end{verbatim}
+For another example, the command \texttt{INCR key} parses the string associated
+with {\tt key} to an integer, increments it by one, and stores it back as a
+string. If the string can not be parse as an integer, a runtime error is raised.
 
-%\paragraph{Example 2} Even worse, not all strings are equal!
-% The call \texttt{INCR some-string} parses the string associated with key
-% \texttt{some-string} to an integer, increments it by one, and store it back as
-% a string. If the string can not be parse as an integer, a runtime error
-% is raised.
 % \begin{verbatim}
 % redis> SET some-string foo
 % OK
@@ -119,7 +118,7 @@ and strings. To summarize our contributions:
 \item We demonstrate how to model variable bindings of an embedded DSL using
  language extensions including type-level literals and data kinds.
 %
-\item We provide (yet another) an example of encoding effects and constraints of
+\item We provide (yet another) example of encoding effects and constraints of
 in types, with indexed monad~\cite{indexedmonad}, closed type-families~\cite{closedtypefamilies} and constraints kinds~\cite{constraintskinds}.
 \end{itemize}
 \todo{Phrase this better.}
