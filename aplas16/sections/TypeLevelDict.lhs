@@ -93,7 +93,7 @@ classes~\cite{McBride:02:Faking}, in recent versions of GHC, {\em indexed type
 families}, or type families for short, are considered a cleaner solution.
 
 For example, compare disjunction |(||||)| and its type-level
-counterpart |And|:\\
+counterpart |Or|:\\
 \noindent{\centering %\small
 \begin{minipage}[b]{0.35\linewidth}
 \begin{spec}
@@ -116,7 +116,24 @@ while |True| and |False| are types of kind |Bool|. The declaration says that
 |Or| is a family of types, indexed by two parameters |a| and |b| of kind |Bool|.
 The type with index |True| and |b| is |True|, and all other indices lead to |b|.
 For our purpose, we can read |Or| as a function from types to types --- observe
-how it resembles the term-level |(||||)|.
+how it resembles the term-level |(||||)|. We present two more type-level
+functions about |Bool| --- negation, and conditional, that we will use later:\\
+\noindent{\centering %\small
+\begin{minipage}[b]{0.35\linewidth}
+\begin{spec}
+type family Not a where
+  Not FALSE  = TRUE
+  Not TRUE   = FALSE {-"~~,"-}
+\end{spec}
+\end{minipage}
+\begin{minipage}[b]{0.55\linewidth}
+\begin{spec}
+type family If (c :: Bool) (t :: a) (f :: a) :: a where
+  If TRUE  tru  fls = tru
+  If FALSE tru  fls = fls {-"~~."-}
+\end{spec}
+\end{minipage}
+}
 
 As a remark, type families in Haskell come in many flavors. Families can
 be defined for |data| and |type| synonym. They can appear inside type
@@ -141,7 +158,6 @@ expressed by unifying type variables with the same name. Note also that |Get| is
 a partial function on types: while |Get (TList (TPar ("A", Int))) "A"| evaluates
 to |Int|, when |Get (TList (TPar ("A", Int))) "B"| appears in a type expression,
 there are no applicable rules to reduce it. The expression thus stays as it is.
-and Haskell eventually signals an error. \todo{really?}
 
 We could make |Get| total, as we would at the term level, with |Maybe|:
 \begin{spec}

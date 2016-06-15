@@ -76,7 +76,7 @@ encode  :: Serialize a => a -> ByteString {-"~~,"-}
 decode  :: Serialize a => ByteString -> Either String a {-"~~."-}
 \end{spec}
 
-\subsection{Storing Primitive Datatypes Other Than Strings}
+\subsection{Automatic Serialization}
 \label{sec:polymorphic-redis}
 
 As mentioned before, while \Redis{} provide a number of container types
@@ -131,10 +131,8 @@ that the intended type of value associated with key |s| must respectively be
 in a context where the type checker is able to reduce |Get xs s| to
 |Just (StringOf Integer)|. Similarly with |incrbyfloat|.
 
-\todo{Some more interesting functions that uses IF and FromJust, etc.
-What about |lset|?}
-
-\subsection{Constraint Disjunctions}
+\subsection{Disjunctive Constraints}
+\label{sec:disjunctive-constraints}
 
 Recall, from Section \ref{sec:introduction}, that commands \texttt{LPUSH key
 val} and \texttt{LLEN key} returns normally either when |key| does not present
@@ -156,9 +154,10 @@ type family IsList (x :: *) :: Bool where
     IsList (ListOf n) = TRUE
     IsList x          = FALSE {-"~~."-}
 \end{spec}
-As many other list-related commands also have this ``List or nothing'' semantics, we give the type constraint a name:
+As many other list-related commands are also invokable under this
+``list or nothing'' precondition, we give the type constraint a name:
 \begin{spec}
-ListOrNX xs s = (IsList (Get xs s) || Not (Member xs s)) ~ True {-"~~."-}
+ListOrNX xs s = (IsList (Get xs s) `Or` Not (Member xs s)) ~ True {-"~~."-}
 \end{spec}
 \noindent The complete implementation of \text{LLEN} with
 |ListOrNX| is therefore:
@@ -171,43 +170,48 @@ llen  :: (KnownSymbol s, ListOrNX xs s)
       => Proxy s -> Edis xs xs (Either Reply Integer)
 llen key = Edis $ Hedis.llen (encodeKey key) {-"~~."-}
 \end{spec}
-
-
+Similarly, the type of |sadd|, a function we have talked about a lot,
+is given below:
+\begin{spec}
+sadd  :: (KnownSymbol s, Serialize x, SetOrNX xs s)
+      => Proxy s -> Edis xs (Set xs s (SetOf x)) (Either Reply Integer)
+sadd key val = Edis $ Redis.sadd (encodeKey key) [encode val] {-"~~,"-}
+\end{spec}
+where |SetOrNX| is similar to |ListOrNX|: |SetOrNX xs s| holds if either
+|s| is associated to a set, or |s| is not in |xs|.
 
 \todo{why cite \cite{singletons} here?}
 
-% The type expression above has kind |Bool|, we could make it
-%  a type constraint by asserting equality.
-%
-% With \emph{constraint kind}, a recent addition to GHC, type constraints now has
-%  its own kind: |Constraint|. That means type constraints
-%  are not restricted to the left side of a |=>| anymore,
-%  they could appear in anywhere that accepts something of kind
-%  |Constraint|, and any type that has kind
-%  |Constraint| can also be used as a type constraint.
-%  \footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
+For a slightly complex example, consider the function |setnx| below, which
+uses the type-level function |If| defined in Section \ref{sec:type-fun}:
+\begin{spec}
+setnx  :: (KnownSymbol s, Serialize x)
+       => Proxy s -> x -> Edis xs  (If (Member xs s) xs (Set xs s (StringOf x)))
+                                   (Either Reply Bool)
+setnx s x = Edis $ Redis.setnx (encodeKey s) (encode x) {-"~~."-}
+\end{spec}
+From the type one can see that |setnx s x| creates a new entry |(s,x)| only if
+|s| is fresh in the data store. The type of the function computes a
+postcondition for static checking, as well as serving as a good documentation
+for its semantics.
 
 \subsection{Assertions}
 \label{sec:assertions}
 
 Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
 very error-prone. It might be preferable if we can explicit declare some new
-keys, after ensure that they do not already exist (in our types), and renounce
-them and forbid further access when we are sure that they shall not be referred
-to anymore. This can be done below:
+keys, after ensure that they do not already exist (in our types). This can be done below:
 \begin{spec}
 declare :: (KnownSymbol s, Member xs s ~ False)
         => Proxy s -> Proxy x -> Edis xs (Set xs s x) ()
-declare s x = Edis $ return () {-"~~,"-}
-
-renounce :: (KnownSymbol s, Member xs s ~ True)
-        => Proxy s -> Edis xs (Del xs s) ()
-renounce s = Edis $ return () {-"~~."-}
+declare s x = Edis $ return () {-"~~."-}
 \end{spec}
+% renounce :: (KnownSymbol s, Member xs s ~ True)
+%         => Proxy s -> Edis xs (Del xs s) ()
+% renounce s = Edis $ return () {-"~~."-}
 The command |declare s x| adds a new key |s| with type |x| to the dictionary,
-if it does not already exist. Dually, |renounce| removes a key from the
-dictionary. Even though it may still exist in the data store, it is not allowed
-to be referred to. The command |start| initializes the dictionary to |NIL|:
+if it does not already exist. The command |start| initializes the dictionary to
+|NIL|:
 \begin{spec}
 start :: Edis NIL NIL ()
 start = Edis $ return () {-"~~."-}
@@ -215,6 +219,7 @@ start = Edis $ return () {-"~~."-}
 
 \subsection{A Larger Example}
 
+We present a larger example as a
 The following program increases the value of |"A"| as an integer, push the result of the increment to list |"L"|, and then pops it out:
 \begin{spec}
 main :: IO ()

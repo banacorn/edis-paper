@@ -5,23 +5,32 @@
 \section{Disscussions}
 \label{sec:discussions}
 
-\paragraph{Syntax}
-No one could ignore the glaring shortcoming of the syntax, which occurs mainly
- in two places: \emph{symbol singletons} and \emph{indexed monad}. We are hoping
- that these issues could be resolved with future syntactic extensions.
+% \paragraph{Syntax}
+% No one could ignore the glaring shortcoming of the syntax, which occurs mainly
+%  in two places: \emph{symbol singletons} and \emph{indexed monad}. We are hoping
+%  that these issues could be resolved with future syntactic extensions.
 
-\paragraph{Returns only determined datatypes}
-
-All other data structures in Redis also follow the semantics similar to
- ``List or nothing''. Take the case of \text{GET}, which also shares a
- ``String or nothing'' semantics that should be typed:
-
+\paragraph{Returning only determined datatypes}
+Many commands in Redis are invokable under preconditions similar to the
+``list or nothing'' constraint mentioned in
+Section~\ref{sec:disjunctive-constraints}. Consider \texttt{GET}, which fetches
+a string associated with a key and should be typed:
 \begin{spec}
 get :: (KnownSymbol s, Serialize x, StringOrNX xs s)
-    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
+    => Proxy s -> Edis xs xs (Either Reply (Maybe x)) {-"~~."-}
 \end{spec}
+The constraint |StringOrNX| is defined by
+\begin{spec}
+type StringOrNX xs s =
+  (IsString (FromJust (Get xs s)) `Or` Not (Member xs s)) ~ TRUE {-"~~,"-}
+\end{spec}
+where |IsString (StringOf n)| is |TRUE| for all type |n|, and |IsString x|
+is |FALSE| otherwise.
+% type family IsString (x :: *) :: Bool where
+%     IsString (StringOf n) = 'True
+%     IsString x            = 'False
 
-Since the key may not exist, we don't know what |x| would
+Since the key might not exist, we don't know what |x| would
 be. We could left |x| ambiguous, and let it be decided by
  the caller. But users will then be forced to spell out the complete
 type signature of everything, including the dictionaries, only to specify
@@ -32,9 +41,8 @@ Instead of allowing the key to be non-existent, we require that the key must
  version of |get| has a stricter semantics:
 
 \begin{spec}
-get :: (KnownSymbol s, Serialize x
-     , Just (StringOf x) ~ Get xs s)
-    => Proxy s -> Edis xs xs (Either Reply (Maybe x))
+get  :: (KnownSymbol s, Serialize x, Just (StringOf x) ~ Get xs s)
+     => Proxy s -> Edis xs xs (Either Reply (Maybe x)) {-"~~."-}
 \end{spec}
 
 \paragraph{Commands with multiple inputs or outputs}
