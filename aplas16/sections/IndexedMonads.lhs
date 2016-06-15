@@ -6,15 +6,15 @@
 \label{sec:indexed-monads}
 
 Stateful computations are often reasoned using Hoare logic. A {\em Hoare triple}
-$\{P\} S \{Q\}$ denotes such a proposition: if the statement $S$ is executed in
-a state satisfying prediate $P$, when it terminates, the state must satisfy
-predicate $Q$. Predicates $P$ and $Q$ are respectively is called the
+$\{P\} S \{Q\}$ denotes the following proposition: if the statement $S$ is
+executed in a state satisfying prediate $P$, when it terminates, the state must
+satisfy predicate $Q$. Predicates $P$ and $Q$ are respectively called the
 \emph{precondition} and the \emph{postcondition} of the Hoare triple.
 
 In Haskell, stateful computations are represented by monads. In order to
 reason about their behaviors within the type system, we wish to label a state
 monad with its pre and postcondition. An \emph{indexed monad}~%
-\cite{indexedmonad} (also called \emph{monadish} or \emph{parameterised monad})
+\cite{indexedmonad} (also called \emph{parameterised monad} or \emph{monadish})
 is a monad that, in addition to the type of value it computes, takes two more
 type arguments representing an initial state and a final state, to be
 interpreted like a Hoare triple~\cite{kleisli}:
@@ -30,11 +30,13 @@ lifts a pure computation to a stateful computation that does not alter the
 state. In |x `bind` f|, a computation |x :: m p q a| is followed by
 |f :: a -> m q r b| --- the postcondition of |x| matches the precondition of
 the computation returned by |f|. The result is a monad |m p r b|.
-Indexed monads have been used ~\cite{typefun,staticresources} ... \todo{for what? Some discriptions here to properly cite them.}
+Indexed monads have been used ~\cite{typefun,staticresources} ... \todo{for what? Some descriptions here to properly cite them.}
 
-We define a new indexed monad |Edis| which, at term level, merely wraps
-|Redis| in an additional constructor. The purpose is to add the
-pre/postconditions at type level:
+We define a new indexed monad |Edis|. At term level, the |unit| and |bind|
+methods are not interesting: they merely make calls to |return| and |(>>=)| of
+|Redis|, and extracts and re-apply the constructor |Edis| when necessary.
+With |Edis| being a |newtype|, they can be optimized away in runtime. The
+purpose is to add the pre/postconditions at type level:
 \begin{spec}
 newtype Edis p q a = Edis { unEdis :: Redis a } {-"~~,"-}
 
@@ -42,10 +44,6 @@ instance IMonad Edis where
     unit = Edis . return
     bind m f = Edis (unEdis m >>= unEdis . f ) {-"~~."-}
 \end{spec}
-At term level, the |unit| and |bind| methods are not interesting: they merely
-make calls to |return| and |(>>=)| of |Redis|, and extracts and re-apply the constructor |Edis| when necessary. With |Edis| being a |newtype|, they
-can be optimized away in runtime. The interesting bits happen in compile type,
-on the added type information.
 
 The properties of the state we care about are the set of currently allocated
 keys and their associated types. We will present, in Section~\ref{sec:type-level-dict}, techniques that allow us to specify

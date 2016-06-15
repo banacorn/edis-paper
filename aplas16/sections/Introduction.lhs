@@ -24,7 +24,7 @@ redis> SINTER some-set another-set
 1) "a"
 2) "b"
 \end{Verbatim}
-\noindent Note that the keys \texttt{some-set} and \texttt{another-set}, if not existing before the call to \texttt{SADD}, are created on site. The calls to
+\noindent Notice that the keys \texttt{some-set} and \texttt{another-set}, if not existing before the call to \texttt{SADD}, are created on site. The calls to
 \texttt{SADD} return the size of the resulting set.
 
 Many third party libraries provide interfaces for general purpose programming
@@ -41,12 +41,13 @@ program = do
 \end{spec}
 The function |sadd :: ByteString -> [ByteString] -> Redis (Either Reply Integer)| takes a key and a list of values as arguments, and returns
 an |Integer| on success, or returns a |Reply|, a low-level representation of
-replies from the Redis server, in case of failures. All wrapped in the monad
-|Redis|, the context of command execution.\footnotemark
-Keys and values, being nothing but binary strings in Redis, are
-represented using Haskell |ByteString|. Values of other types must be encoded
-as |ByteString|s before being written to the database, and decoded after being
-read back.
+replies from the \Redis{} server, in case of failures, all wrapped in the monad
+|Redis|, the context of command execution.\footnotemark~
+Keys and values, being nothing but binary strings in \Redis{}, are
+represented using Haskell |ByteString|.
+%Values of other types must be encoded
+%as |ByteString|s before being written to the database, and decoded after being
+%read back.
 
 \footnotetext{\Hedis{} provides another kind of context, |RedisTx|, for
 \emph{transactions}, united with |Redis| under the class |RedisCtx|. We
@@ -60,19 +61,19 @@ The subsequent call to \texttt{SADD}, which adds a value to a set, thus causes a
 redis> SET some-string foo
 OK
 redis> SADD some-string bar
-(error) WRONGTYPE Operation against a key holding the wrong
-kind of value
+(error) WRONGTYPE Operation against a key holding
+the wrong kind of value
 \end{Verbatim}
-\noindent For another source of type error, the command \texttt{INCR key} intends to
-increment the value associated to \texttt{key} by one. With strings being the
-only primitive type, however, \Redis{} parses the stored string to an integer
-and, after incrementation, stores a string back. If the string can not be parse
-as an integer, a runtime error is raised.
+\noindent For another source of type error, the command \texttt{INCR key}
+incrementa the value associated to \texttt{key} by one. With strings being the
+only primitive type, \Redis{} parses the stored string to an integer and, after
+incrementation, stores a string back. If the string can not be parse as an
+integer, a runtime error is raised.
 
 The reader must have noticed the peculiar pattern of value creation and update
-in \Redis{}: the same command is used both to create a value and update a value,
-if it exists. Similar to \texttt{SADD}, the command \texttt{LPUSH} appends a
-value (a string) to a list, or creates one if it does not exist:
+in \Redis{}: the same command is used both to create a key-value pair and
+update them. Similar to \texttt{SADD}, the command \texttt{LPUSH} appends a
+value (a string) to a list, or creates one if the key does not exist:
 \begin{Verbatim}[xleftmargin=.4in]
 redis> LPUSH some-list bar
 (integer) 1
@@ -96,7 +97,7 @@ redis> LLEN nonexistent
 \end{Verbatim}
 
 Being a simple wrapper on top of the TCP protocol of \Redis{}, \Hedis{}
-inherits all the problems. Executing following program yields the same error
+inherits all the behaviors. Executing following program yields the same error
 wrapped in Haskell: |Left (Error| \texttt{"WRONGTYPE Operation against a
 key holding the wrong kind of value"}|)|.
 \begin{spec}
@@ -116,7 +117,7 @@ value to be accessed is indeed an integer. We wish to see from the type of
 operators such as \texttt{LLEN} when it can be called, and allow it to be used
 only contexts that are safe. We may even want to explicitly declare existence
 of certain keys in the data store and, when we are done with them, renounce them
-to prevent further access, as well as possible errors.
+to prevent further access, as well as preventing possible errors.
 
 % \paragraph{The Cause} Every key is associated with a value, and every value has
 % its own type. But most commands in \Redis{} only work with a certain type of
@@ -137,7 +138,8 @@ This paper discusses the techniques we used and experiences we learned from buil
 monad}, on top of the monad |Redis|, which is indexed by a dictionary that
 maintains the set of currently defined keys and their types. To represent
 the dictionary, we need to encode variable binds with {\em type-level} lists
-and strings. To summarize our contributions:
+and strings. And to manipulate the dictionary, we applied various type-level
+programming techniques. To summarize our contributions:
 \begin{itemize}
 \item We present \Edis{}, a statically typed domain-specific language embedded in Haskell and built on \Hedis{}.
 % also makes Redis polymorphic by automatically converting back and forth from values of arbitrary types and boring ByteStrings.

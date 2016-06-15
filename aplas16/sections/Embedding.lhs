@@ -41,7 +41,7 @@ purpose, we will use the following type |Proxy|:
 \begin{spec}
 data Proxy t = Proxy {-"~~."-}
 \end{spec}
-For every type |t|, |Proxy t| is a type that has only one term: |Proxy|.
+For every type |t|, |Proxy t| is a type that has only one term: |Proxy|.%
 \footnote{While giving the same name to both the type and the term can be very
 confusing, it is unfortunately a common practice in the Haskell community.}
 To call |del|, instead of passing a key as a |String|, we give it a proxy with
@@ -68,7 +68,7 @@ del key = Edis (Hedis.del [encodeKey key])  {-"~~,"-}
 \end{spec}
 where |encodeKey = encode . symbolVal|.
 
-A final note: functions the |encode|, from the Haskell library {\sc cereal},
+A final note: the function |encode|, from the Haskell library {\sc cereal},
 helps to convert certain datatype that are {\em serializable} into |ByteString|.
 The function and its dual |decode| will be use more later.
 \begin{spec}
@@ -107,11 +107,9 @@ set  :: (KnownSymbol s, Serialize x)
      => Proxy s -> x -> Edis xs (Set xs s (StringOf x)) (Either Reply Status)
 set key val = Edis $ Hedis.set (encodeKey key) (encode val) {-"~~,"-}
 \end{spec}
-where the function |encode :: Serialize a => a -> ByteString|
-
 For example, executing |set (Proxy :: Proxy "A") True| updates the dictionary
-with an entry |TPar ("A", StringOf Bool)|: if |"A"| is not in the dictionary,
-the entry is added; otherwise the old type of |"A"| is updated to
+with an entry |TPar ("A", StringOf Bool)|. If |"A"| is not in the dictionary,
+this entry is added; otherwise the old type of |"A"| is updated to
 |StringOf Bool|.
 
 \Redis{} command \texttt{INCR} reads the string associated with the given key,
@@ -129,105 +127,121 @@ incrbyfloat key eps = Edis $ Hedis.incrbyfloat (encodeKey key) eps {-"~~."-}
 \end{spec}
 Notice the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
 that the intended type of value associated with key |s| must respectively be
-|Integer| and |Double|.
+|Integer| and |Double|. The function |incr| is allowed to be called only
+in a context where the type checker is able to reduce |Get xs s| to
+|Just (StringOf Integer)|. Similarly with |incrbyfloat|.
 
 \todo{Some more interesting functions that uses IF and FromJust, etc.
 What about |lset|?}
 
 \subsection{Constraint Disjunctions}
 
-In the following example, \texttt{LPUSH} appends a string \texttt{"bar"} to the
-list associated to \texttt{some-list}, or creates a list if \texttt{some-list}
-does not yet present. The command \texttt{LLEN} then returns the length of
-the list. If the key passed to \texttt{LLEN} is not associated to a list,
-it signals an error.
-\begin{verbatim}
-redis> LPUSH some-list bar
-(integer) 1
-redis> LLEN some-list
-(integer) 1
-redis> SET some-string foo
-OK
-redis> LLEN some-string
-(error) WRONGTYPE Operation against a key holding
-the wrong kind of value
-\end{verbatim}
-One may give |llen| this type:
+Recall, from Section \ref{sec:introduction}, that commands \texttt{LPUSH key
+val} and \texttt{LLEN key} returns normally either when |key| does not present
+in the data store, or when |key| presents and is associated to a list.
+What we wish to have in their constraint is thus a predicate equivalent to |Get xs s == Just (ListOf x) |||| not (Member xs s)|.
+
+To impose a conjunctive constraint |P && Q|, one may simply put them both in the
+type: |(P, Q) => ...|. Expressing disjunctive constraints is only slightly
+harder, thanks to our type-level functions. Various operators for type-level
+boolean and equality are defined in \text{Data.Type.Bool} and
+\text{Data.Type.Equality}, like how we defined |Or| in Section
+\ref{sec:type-fun}. We may thus write the predicate as:
 \begin{spec}
-llen  :: (KnownSymbol s, Get xs s ~ Just (ListOf x))
+Get xs s == Just (ListOf x) `Or` Not (Member xs s) {-"~~."-}
+\end{spec}
+To avoid referring to |x|, which might not exist, we define an auxiliary predicate |IsList :: Maybe * -> Bool|:
+\begin{spec}
+type family IsList (x :: *) :: Bool where
+    IsList (ListOf n) = TRUE
+    IsList x          = FALSE {-"~~."-}
+\end{spec}
+As many other list-related commands also have this ``List or nothing'' semantics, we give the type constraint a name:
+\begin{spec}
+ListOrNX xs s = (IsList (Get xs s) || Not (Member xs s)) ~ True {-"~~."-}
+\end{spec}
+\noindent The complete implementation of \text{LLEN} with
+|ListOrNX| is therefore:
+\begin{spec}
+lpush :: (KnownSymbol s, Serialize x, ListOrNX xs s)
+      => Proxy s -> x -> Edis xs (Set xs s (ListOf x)) (Either Reply Integer)
+lpush key val = Edis $ Redis.lpush (encodeKey key) [encode val] {-"~~,"-}
+
+llen  :: (KnownSymbol s, ListOrNX xs s)
       => Proxy s -> Edis xs xs (Either Reply Integer)
 llen key = Edis $ Hedis.llen (encodeKey key) {-"~~."-}
 \end{spec}
-However, this is not an accurate specification of \texttt{LLEN} in \Redis{} ---
-\texttt{LLEN} also accepts keys that do not exist, and replies with \texttt{0}:
-\begin{verbatim}
-redis> LLEN nonexistent
-(integer) 0
-\end{verbatim}
-What we wish to have in the class constraint of |llen| is thus a predicate
-equivalent to |Get xs s == Just (ListOf x) |||| not (Member xs
-s)|. The situation is the same with |lpush|: it returns normally either when
-the key is associated to a list or does not exist at all, while signaling an
-error when the associated value is not a list.
 
-Unfortunately, expressing disjunctions in constraints is much more difficult
-than expressing conjunctions. To impose a class constraint |P && Q|, one may
-simply put them both in the type: |(P, Q) => ...|. To express top-level
-constraints
+
 
 \todo{why cite \cite{singletons} here?}
 
-We could achieve this simply by translating the semantics we want to the
- domain of Boolean, with type-level boolean functions such as
-|(&&)|,
-|(||)|, |Not|,
-|(==)|, etc.\footnotemark To avoid
+% The type expression above has kind |Bool|, we could make it
+%  a type constraint by asserting equality.
+%
+% With \emph{constraint kind}, a recent addition to GHC, type constraints now has
+%  its own kind: |Constraint|. That means type constraints
+%  are not restricted to the left side of a |=>| anymore,
+%  they could appear in anywhere that accepts something of kind
+%  |Constraint|, and any type that has kind
+%  |Constraint| can also be used as a type constraint.
+%  \footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
 
-\footnotetext{Available in \text{Data.Type.Bool} and
- \text{Data.Type.Equality}}
+\subsection{Assertions}
+\label{sec:assertions}
 
+Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
+very error-prone. It might be preferable if we can explicit declare some new
+keys, after ensure that they do not already exist (in our types), and renounce
+them and forbid further access when we are sure that they shall not be referred
+to anymore. This can be done below:
 \begin{spec}
-Get xs s == Just (ListOf x) || Not (Member xs s)
+declare :: (KnownSymbol s, Member xs s ~ False)
+        => Proxy s -> Proxy x -> Edis xs (Set xs s x) ()
+declare s x = Edis $ return () {-"~~,"-}
+
+renounce :: (KnownSymbol s, Member xs s ~ True)
+        => Proxy s -> Edis xs (Del xs s) ()
+renounce s = Edis $ return () {-"~~."-}
+\end{spec}
+The command |declare s x| adds a new key |s| with type |x| to the dictionary,
+if it does not already exist. Dually, |renounce| removes a key from the
+dictionary. Even though it may still exist in the data store, it is not allowed
+to be referred to. The command |start| initializes the dictionary to |NIL|:
+\begin{spec}
+start :: Edis NIL NIL ()
+start = Edis $ return () {-"~~."-}
 \end{spec}
 
-To avoid addressing the type of value (as it may not exist at all), we defined
- an auxiliary predicate |IsList :: Maybe * -> Bool| to
- replace the former part.
+\subsection{A Larger Example}
 
+The following program increases the value of |"A"| as an integer, push the result of the increment to list |"L"|, and then pops it out:
 \begin{spec}
-IsList (Get xs s) || Not (Member xs s)
+main :: IO ()
+main = do
+    conn    <- connect defaultConnectInfo
+    result  <- runRedis conn $ unEdis $ start
+        `bind` \ _ ->  declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
+        `bind` \ _ ->  incr (Proxy :: Proxy "A")
+        `bind` \n ->  case n of
+            Left  err  -> lpush (Proxy :: Proxy "L") 0
+            Right n    -> lpush (Proxy :: Proxy "L") n
+        `bind` \ _ ->  lpop     (Proxy :: Proxy "L")
+    print result
 \end{spec}
 
-The type expression above has kind |Bool|, we could make it
- a type constraint by asserting equality.
+The syntax is pretty heavy, like the old days when there's no
+ \emph{do-notation}\cite{history}. But if we don't need any variable bindings
+ between operations, we could compose these commands with a sequencing operator
+ |(>>>)|.
 
 \begin{spec}
-(IsList (Get xs s) || Not (Member xs s)) ~ True
+(>>>) :: IMonad m => m p q a -> m q r b -> m p r b
 \end{spec}
-
-With \emph{constraint kind}, a recent addition to GHC, type constraints now has
- its own kind: |Constraint|. That means type constraints
- are not restricted to the left side of a |=>| anymore,
- they could appear in anywhere that accepts something of kind
- |Constraint|, and any type that has kind
- |Constraint| can also be used as a type constraint.
- \footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
-
-As many other list-related commands also have this ``List or nothing'' semantics,
- we could abstract the lengthy type constraint above and give it an alias with
- type synonym.
-
 \begin{spec}
-ListOrNX xs s =
-    (IsList (Get xs s) || Not (Member xs s)) ~ True
-\end{spec}
-
-The complete implementation of \text{LLEN} with
-|ListOrNX| would become:
-
-\begin{spec}
-llen :: (KnownSymbol s, ListOrNX xs s)
-        => Proxy s
-        -> Edis xs xs (Either Reply Integer)
-llen key = Edis $ Hedis.llen (encodeKey key)
+program = start
+    >>> declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
+    >>> incr    (Proxy :: Proxy "A")
+    >>> lpush   (Proxy :: Proxy "L") 0
+    >>> lpop    (Proxy :: Proxy "L")
 \end{spec}

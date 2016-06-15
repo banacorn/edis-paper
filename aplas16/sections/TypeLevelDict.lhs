@@ -7,12 +7,11 @@
 
 One of the challenges of statically ensuring type correctness of \Redis{},
 which also presents in other stateful languages, is that the type of the value
-associated to a key can be altered after updating. To ensure type correctness,
-we keep track of the types of all existing keys in a {\em dictionary} ---
-conceptually, an associate list, or a list of pairs of keys and some encoding of
-types. For example, we may want the dictionary |[("A",Int), ("B", Char), ("C",
-Bool)]| to represent a predicate stating that ``the keys |"A"|, |"B"|, and |"C"|
-are respectively associated to values of type |Int|, |Char|, and |Bool|.''
+associated to a key can be altered after updating. \todo{Is it so in \Redis{}?}
+To ensure type correctness, we keep track of the types of all existing keys in a {\em dictionary} --- conceptually, an associate list, or a list of pairs of keys
+and some encoding of types. For example, we may want the dictionary |[("A",Int),
+("B", Char), ("C", Bool)]| to represent a predicate stating that ``the keys |"A"|, |"B"|, and |"C"| are respectively associated to values of type |Int|,
+|Char|, and |Bool|.''
 
 The dictionary above mixes values (strings such as |"A"|, |"B"|) and types.
 Further more, as mentioned in Section~\ref{sec:indexed-monads}, the
@@ -47,18 +46,19 @@ promotes certain ``suitable'' types to kinds.\footnote{It is only informally
 described in the GHC manual what types are ``suitable''.} With the extension,
 the |data| definitions above has an alternative reading: |Nat| is a new kind,
 |Zero :: Nat| is a type having kind |Nat|, and |Suc :: Nat -> Nat| is a type
-constructor, taking a type in kind |Nat| to another type in |Nat|. Whether a
-constructor is promoted can often be inferred from the context. When one needs
-to be more specific, prefixing a constructor with a single quote, such as in
-|ZERO| and |SUC|, denotes that it is promoted.
+constructor, taking a type in kind |Nat| to another type in |Nat|. When one
+sees a constructor in an expression, whether it is promoted can often be
+inferred from the context. When one needs to be more specific, prefixing a
+constructor with a single quote, such as in |ZERO| and |SUC|, denotes that it
+is promoted.
 
 The situation of lists is similar: for all kind |k|, |[k]| is also a kind. For
-all kind |k|, |[] :: [k]| is a type. Given a type |x|
-of kind |k| and a type |xs| of kind |[k]|, |x : xs| is again a type of
-kind |[k]|. Formally, |(:) :: k -> [k] -> [k]|. For example,
-|Int :- (Char :- (Bool :- NIL))| is a type having kind |[*]| --- a list of
-(lifted) types. The optional quote denotes that the constructors are promoted.
-The same list can be denoted by a syntax sugar |TList (Int, Char, Bool)|.
+all kind |k|, |[]| is a type of kind |[k]|. Given a type |x| of kind |k| and a
+type |xs| of kind |[k]|, |x : xs| is again a type of kind |[k]|. Formally,
+|(:) :: k -> [k] -> [k]|. For example, |Int :- (Char :- (Bool :- NIL))| is a
+type having kind |[*]| --- it is a list of (lifted) types. The optional quote
+denotes that the constructors are promoted. The same list can be denoted by a
+syntax sugar |TList (Int, Char, Bool)|.
 
 Tuples are also promoted. Thus we may put two types in a pair to form another
 type, such as in |TPar (Int, Char)|, a type having kind |(*,*)|.
@@ -82,8 +82,8 @@ type Dict1 = TList (TPar ("A", Int), TPar ("B", "A")) {-"~~."-}
 All the entities defined above are types, where |Dict0| has kind |[(Symbol,
 *)]|. In |Dict1|, while |Int| has kind |*| and |"A"| has kind |Symbol|, the former kind subsumes the later. Thus |Dict1| also has kind |[(Symbol, *)]|.
 
-
 \subsection{Type-Level Functions}
+\label{sec:type-fun}
 
 Now that we can represent dictionaries as types, the next step is to define
 operations on them. A function that inserts an entry to a dictionary, for
@@ -92,60 +92,56 @@ possible to simulate type-level functions using Haskell type
 classes~\cite{McBride:02:Faking}, in recent versions of GHC, {\em indexed type
 families}, or type families for short, are considered a cleaner solution.
 
-For example, compare conjunction |(&&)| and its type-level
+For example, compare disjunction |(||||)| and its type-level
 counterpart |And|:\\
 \noindent{\centering %\small
 \begin{minipage}[b]{0.35\linewidth}
 \begin{spec}
-(&&) :: Bool -> Bool -> Bool
-True  &&  True  = True
-a     &&  b     = False {-"~~,"-}
+(||) :: Bool -> Bool -> Bool
+True  &&  b  = True
+a     &&  b  = b {-"~~,"-}
 \end{spec}
 \end{minipage}
 \begin{minipage}[b]{0.55\linewidth}
 \begin{spec}
-type family And (a :: Bool) (b :: Bool) :: Bool
-  where  And  True  True  = True
-         And  a     b     = False {-"~~."-}
+type family Or (a :: Bool) (b :: Bool) :: Bool
+  where  Or  True  b  = True
+         Or  a     b  = b {-"~~."-}
 \end{spec}
 \end{minipage}
 }\\
-The lefthand side is a typical definition of |(&&)| by pattern matching.
+The lefthand side is a typical definition of |(||||)| by pattern matching.
 On the righthand side, |Bool| is not a type, but a type lifted to a kind,
-while |True| and |False| are types of kind |Bool|. The declaration says
-that |And| is a family of types, indexed by two parameters |a| and |b| of
-kind |Bool|. The type with index |True| and |True| is |True|, and all
-other indices lead to |False|. For our purpose, we can read |And| as a
-function from types to types --- observe how it resembles the term-level |(&&)|.
+while |True| and |False| are types of kind |Bool|. The declaration says that
+|Or| is a family of types, indexed by two parameters |a| and |b| of kind |Bool|.
+The type with index |True| and |b| is |True|, and all other indices lead to |b|.
+For our purpose, we can read |Or| as a function from types to types --- observe
+how it resembles the term-level |(||||)|.
 
-Note that type families in Haskell come in many flavors. Families can be
-defined for |data| and |type| synonym. They can appear inside type
-classes~\cite{tfclass,tfsynonym} or at toplevel. Toplevel type families
-can be open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we chose
-is top-level, closed type synonym family, since it allows overlapping
-instances, since need none of the extensibility provided by open type
-families. Notice that the instance |And True True| could be subsumed under
-the more general instance, |And a b|. In a closed type family we may resolve
-the overlapping in order, just like how cases overlapping is resolved in
-term-level functions.
+As a remark, type families in Haskell come in many flavors. Families can
+be defined for |data| and |type| synonym. They can appear inside type
+classes~\cite{tfclass,tfsynonym} or at toplevel. Toplevel type families can be
+open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we chose is top-level,
+closed type synonym family, since it allows overlapping instances, and since we need none of the extensibility provided by open type families. Notice that the instance |Or True b| could be subsumed under the more general instance, |Or a
+b|. In a closed type family we may resolve the overlapping in order, just like
+how cases overlapping is resolved in term-level functions.
 
 %\subsection{Functions on Type-Level Dictionaries}
 
-We are now able to define operations on type-level dictionaries.
-Let's begin with dictionary lookup.
+We are now able to define operations on type-level dictionaries. Let's begin
+with dictionary lookup.
 \begin{spec}
 type family Get (xs :: [(Symbol, *)]) (s :: Symbol) :: * where
     Get (TPar (s, x) :- xs) s  =  x
-    Get (TPar (t, x) :- xs) s  =  Get xs s {-"~~"-}
+    Get (TPar (t, x) :- xs) s  =  Get xs s {-"~~."-}
 \end{spec}
 The type-level function |Get| returns the entry associated with key |s| in the
 dictionary |xs|. Notice, in the first case, how type-level equality can be
-expressed by unifying type variables with the same name.
-Note also that |Get| is a partial function on types: while
-|Get (TList (TPar ("A", Int))) "A"| evaluates to |Int|, when
-|Get (TList (TPar ("A", Int))) "B"| appears in a type expression, there are no
-applicable rules to reduce it. The expression thus stays as it is, and Haskell
-eventually signals an error.
+expressed by unifying type variables with the same name. Note also that |Get| is
+a partial function on types: while |Get (TList (TPar ("A", Int))) "A"| evaluates
+to |Int|, when |Get (TList (TPar ("A", Int))) "B"| appears in a type expression,
+there are no applicable rules to reduce it. The expression thus stays as it is.
+and Haskell eventually signals an error. \todo{really?}
 
 We could make |Get| total, as we would at the term level, with |Maybe|:
 \begin{spec}
@@ -161,7 +157,7 @@ existing entry or inserts a new entry, |Del| removes an entry matching
 a given key, while |Member| checks whether a given key exists in the
 dictionary.
 
-\begin{figure}
+\begin{figure}[t]
 \begin{spec}
 -- inserts or updates an entry
 type family Set  (xs :: [(Symbol, *)]) (s :: Symbol) (x :: *) :: [(Symbol, *)] where

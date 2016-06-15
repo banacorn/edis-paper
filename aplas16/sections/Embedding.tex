@@ -330,7 +330,7 @@ purpose, we will use the following type \ensuremath{\Conid{Proxy}}:
 \>[B]{}\mathbf{data}\;\Conid{Proxy}\;\Varid{t}\mathrel{=}\Conid{Proxy}~~.{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
-For every type \ensuremath{\Varid{t}}, \ensuremath{\Conid{Proxy}\;\Varid{t}} is a type that has only one term: \ensuremath{\Conid{Proxy}}.
+For every type \ensuremath{\Varid{t}}, \ensuremath{\Conid{Proxy}\;\Varid{t}} is a type that has only one term: \ensuremath{\Conid{Proxy}}.%
 \footnote{While giving the same name to both the type and the term can be very
 confusing, it is unfortunately a common practice in the Haskell community.}
 To call \ensuremath{\Varid{del}}, instead of passing a key as a \ensuremath{\Conid{String}}, we give it a proxy with
@@ -374,7 +374,7 @@ compile time. In summary, \ensuremath{\Varid{del}} can be implemented as:
 \end{hscode}\resethooks
 where \ensuremath{\Varid{encodeKey}\mathrel{=}\Varid{encode}\mathbin{\cdot}\Varid{symbolVal}}.
 
-A final note: functions the \ensuremath{\Varid{encode}}, from the Haskell library {\sc cereal},
+A final note: the function \ensuremath{\Varid{encode}}, from the Haskell library {\sc cereal},
 helps to convert certain datatype that are {\em serializable} into \ensuremath{\Conid{ByteString}}.
 The function and its dual \ensuremath{\Varid{decode}} will be use more later.
 \begin{hscode}\SaveRestoreHook
@@ -432,11 +432,9 @@ in the class \ensuremath{\Conid{Serialize}}), and performs the encoding for the 
 \>[B]{}\Varid{set}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.set}\;(\Varid{encodeKey}\;\Varid{key})\;(\Varid{encode}\;\Varid{val})~~,{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
-where the function \ensuremath{\Varid{encode}\mathbin{::}\Conid{Serialize}\;\Varid{a}\Rightarrow \Varid{a}\to \Conid{ByteString}}
-
 For example, executing \ensuremath{\Varid{set}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34})\;\Conid{True}} updates the dictionary
-with an entry \ensuremath{\mbox{\textquotesingle}(\text{\tt \char34 A\char34},\Conid{StringOf}\;\Conid{Bool})}: if \ensuremath{\text{\tt \char34 A\char34}} is not in the dictionary,
-the entry is added; otherwise the old type of \ensuremath{\text{\tt \char34 A\char34}} is updated to
+with an entry \ensuremath{\mbox{\textquotesingle}(\text{\tt \char34 A\char34},\Conid{StringOf}\;\Conid{Bool})}. If \ensuremath{\text{\tt \char34 A\char34}} is not in the dictionary,
+this entry is added; otherwise the old type of \ensuremath{\text{\tt \char34 A\char34}} is updated to
 \ensuremath{\Conid{StringOf}\;\Conid{Bool}}.
 
 \Redis{} command \texttt{INCR} reads the string associated with the given key,
@@ -465,135 +463,219 @@ key. They can be
 \end{hscode}\resethooks
 Notice the use of (\ensuremath{\mathord{\sim}}), \emph{equality constraints}~\cite{typeeq}, to enforce
 that the intended type of value associated with key \ensuremath{\Varid{s}} must respectively be
-\ensuremath{\Conid{Integer}} and \ensuremath{\Conid{Double}}.
+\ensuremath{\Conid{Integer}} and \ensuremath{\Conid{Double}}. The function \ensuremath{\Varid{incr}} is allowed to be called only
+in a context where the type checker is able to reduce \ensuremath{\Conid{Get}\;\Varid{xs}\;\Varid{s}} to
+\ensuremath{\Conid{Just}\;(\Conid{StringOf}\;\Conid{Integer})}. Similarly with \ensuremath{\Varid{incrbyfloat}}.
 
 \todo{Some more interesting functions that uses IF and FromJust, etc.
 What about \ensuremath{\Varid{lset}}?}
 
 \subsection{Constraint Disjunctions}
 
-In the following example, \texttt{LPUSH} appends a string \texttt{"bar"} to the
-list associated to \texttt{some-list}, or creates a list if \texttt{some-list}
-does not yet present. The command \texttt{LLEN} then returns the length of
-the list. If the key passed to \texttt{LLEN} is not associated to a list,
-it signals an error.
-\begin{tabbing}\tt
-~redis\char62{}~LPUSH~some\char45{}list~bar\\
-\tt ~\char40{}integer\char41{}~1\\
-\tt ~redis\char62{}~LLEN~some\char45{}list\\
-\tt ~\char40{}integer\char41{}~1\\
-\tt ~redis\char62{}~SET~some\char45{}string~foo\\
-\tt ~OK\\
-\tt ~redis\char62{}~LLEN~some\char45{}string\\
-\tt ~\char40{}error\char41{}~WRONGTYPE~Operation~against~a~key~holding\\
-\tt ~the~wrong~kind~of~value
-\end{tabbing}
-One may give \ensuremath{\Varid{llen}} this type:
+Recall, from Section \ref{sec:introduction}, that commands \texttt{LPUSH key
+val} and \texttt{LLEN key} returns normally either when \ensuremath{\Varid{key}} does not present
+in the data store, or when \ensuremath{\Varid{key}} presents and is associated to a list.
+What we wish to have in their constraint is thus a predicate equivalent to \ensuremath{\Conid{Get}\;\Varid{xs}\;\Varid{s}\doubleequals\Conid{Just}\;(\Conid{ListOf}\;\Varid{x})\mathrel{\vee}\neg \;(\Conid{Member}\;\Varid{xs}\;\Varid{s})}.
+
+To impose a conjunctive constraint \ensuremath{\Conid{P}\mathrel{\wedge}\Conid{Q}}, one may simply put them both in the
+type: \ensuremath{(\Conid{P},\Conid{Q})\Rightarrow \mathbin{...}}. Expressing disjunctive constraints is only slightly
+harder, thanks to our type-level functions. Various operators for type-level
+boolean and equality are defined in \text{Data.Type.Bool} and
+\text{Data.Type.Equality}, like how we defined \ensuremath{\Conid{Or}} in Section
+\ref{sec:type-fun}. We may thus write the predicate as:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Conid{Get}\;\Varid{xs}\;\Varid{s}\doubleequals\Conid{Just}\;(\Conid{ListOf}\;\Varid{x})\mathbin{`\Conid{Or}`}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{s})~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+To avoid referring to \ensuremath{\Varid{x}}, which might not exist, we define an auxiliary predicate \ensuremath{\Conid{IsList}\mathbin{::}\Conid{Maybe}\mathbin{*}\to \Conid{Bool}}:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{23}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{IsList}\;(\Varid{x}\mathbin{::}\mathbin{*})\mathbin{::}\Conid{Bool}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsList}\;(\Conid{ListOf}\;\Varid{n})\mathrel{=}\mbox{\textquotesingle}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsList}\;\Varid{x}{}\<[23]%
+\>[23]{}\mathrel{=}\mbox{\textquotesingle}\Conid{False}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+As many other list-related commands also have this ``List or nothing'' semantics, we give the type constraint a name:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Conid{ListOrNX}\;\Varid{xs}\;\Varid{s}\mathrel{=}(\Conid{IsList}\;(\Conid{Get}\;\Varid{xs}\;\Varid{s})\mathrel{\vee}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{s}))\mathord{\sim}\Conid{True}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\noindent The complete implementation of \text{LLEN} with
+\ensuremath{\Conid{ListOrNX}} is therefore:
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{7}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{lpush}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{Serialize}\;\Varid{x},\Conid{ListOrNX}\;\Varid{xs}\;\Varid{s}){}\<[E]%
+\\
+\>[B]{}\hsindent{7}{}\<[7]%
+\>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Varid{x}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;(\Conid{ListOf}\;\Varid{x}))\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{lpush}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Redis}.lpush}\;(\Varid{encodeKey}\;\Varid{key})\;[\mskip1.5mu \Varid{encode}\;\Varid{val}\mskip1.5mu]~~,{}\<[E]%
+\\[\blanklineskip]%
 \>[B]{}\Varid{llen}{}\<[7]%
-\>[7]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{Get}\;\Varid{xs}\;\Varid{s}\mathord{\sim}\Conid{Just}\;(\Conid{ListOf}\;\Varid{x})){}\<[E]%
+\>[7]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{ListOrNX}\;\Varid{xs}\;\Varid{s}){}\<[E]%
 \\
 \>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
 \\
 \>[B]{}\Varid{llen}\;\Varid{key}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.llen}\;(\Varid{encodeKey}\;\Varid{key})~~.{}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
-However, this is not an accurate specification of \texttt{LLEN} in \Redis{} ---
-\texttt{LLEN} also accepts keys that do not exist, and replies with \texttt{0}:
-\begin{tabbing}\tt
-~redis\char62{}~LLEN~nonexistent\\
-\tt ~\char40{}integer\char41{}~0
-\end{tabbing}
-What we wish to have in the class constraint of \ensuremath{\Varid{llen}} is thus a predicate
-equivalent to \ensuremath{\Conid{Get}\;\Varid{xs}\;\Varid{s}\doubleequals\Conid{Just}\;(\Conid{ListOf}\;\Varid{x})\mathrel{\vee}\neg \;(\Conid{Member}\;\Varid{xs}\;\Varid{s})}. The situation is the same with \ensuremath{\Varid{lpush}}: it returns normally either when
-the key is associated to a list or does not exist at all, while signaling an
-error when the associated value is not a list.
 
-Unfortunately, expressing disjunctions in constraints is much more difficult
-than expressing conjunctions. To impose a class constraint \ensuremath{\Conid{P}\mathrel{\wedge}\Conid{Q}}, one may
-simply put them both in the type: \ensuremath{(\Conid{P},\Conid{Q})\Rightarrow \mathbin{...}}. To express top-level
-constraints
+
 
 \todo{why cite \cite{singletons} here?}
 
-We could achieve this simply by translating the semantics we want to the
- domain of Boolean, with type-level boolean functions such as
-\ensuremath{(\mathrel{\wedge})},
-\ensuremath{(\mid )}, \ensuremath{\Conid{Not}},
-\ensuremath{(\doubleequals)}, etc.\footnotemark To avoid
+% The type expression above has kind |Bool|, we could make it
+%  a type constraint by asserting equality.
+%
+% With \emph{constraint kind}, a recent addition to GHC, type constraints now has
+%  its own kind: |Constraint|. That means type constraints
+%  are not restricted to the left side of a |=>| anymore,
+%  they could appear in anywhere that accepts something of kind
+%  |Constraint|, and any type that has kind
+%  |Constraint| can also be used as a type constraint.
+%  \footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
 
-\footnotetext{Available in \text{Data.Type.Bool} and
- \text{Data.Type.Equality}}
+\subsection{Assertions}
+\label{sec:assertions}
 
-\begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Conid{Get}\;\Varid{xs}\;\Varid{s}\doubleequals\Conid{Just}\;(\Conid{ListOf}\;\Varid{x})\mathrel{\vee}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{s}){}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-
-To avoid addressing the type of value (as it may not exist at all), we defined
- an auxiliary predicate \ensuremath{\Conid{IsList}\mathbin{::}\Conid{Maybe}\mathbin{*}\to \Conid{Bool}} to
- replace the former part.
-
-\begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Conid{IsList}\;(\Conid{Get}\;\Varid{xs}\;\Varid{s})\mathrel{\vee}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{s}){}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-
-The type expression above has kind \ensuremath{\Conid{Bool}}, we could make it
- a type constraint by asserting equality.
-
-\begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}(\Conid{IsList}\;(\Conid{Get}\;\Varid{xs}\;\Varid{s})\mathrel{\vee}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{s}))\mathord{\sim}\Conid{True}{}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-
-With \emph{constraint kind}, a recent addition to GHC, type constraints now has
- its own kind: \ensuremath{\Conid{Constraint}}. That means type constraints
- are not restricted to the left side of a \ensuremath{\Rightarrow } anymore,
- they could appear in anywhere that accepts something of kind
- \ensuremath{\Conid{Constraint}}, and any type that has kind
- \ensuremath{\Conid{Constraint}} can also be used as a type constraint.
- \footnote{See \url{https://downloads.haskell.org/~ghc/7.4.1/docs/html/users_guide/constraint-kind.html}.}
-
-As many other list-related commands also have this ``List or nothing'' semantics,
- we could abstract the lengthy type constraint above and give it an alias with
- type synonym.
-
-\begin{hscode}\SaveRestoreHook
-\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
-\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Conid{ListOrNX}\;\Varid{xs}\;\Varid{s}\mathrel{=}{}\<[E]%
-\\
-\>[B]{}\hsindent{5}{}\<[5]%
-\>[5]{}(\Conid{IsList}\;(\Conid{Get}\;\Varid{xs}\;\Varid{s})\mathrel{\vee}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{s}))\mathord{\sim}\Conid{True}{}\<[E]%
-\ColumnHook
-\end{hscode}\resethooks
-
-The complete implementation of \text{LLEN} with
-\ensuremath{\Conid{ListOrNX}} would become:
-
+Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
+very error-prone. It might be preferable if we can explicit declare some new
+keys, after ensure that they do not already exist (in our types), and renounce
+them and forbid further access when we are sure that they shall not be referred
+to anymore. This can be done below:
 \begin{hscode}\SaveRestoreHook
 \column{B}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{9}{@{}>{\hspre}l<{\hspost}@{}}%
 \column{E}{@{}>{\hspre}l<{\hspost}@{}}%
-\>[B]{}\Varid{llen}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{ListOrNX}\;\Varid{xs}\;\Varid{s}){}\<[E]%
+\>[B]{}\Varid{declare}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{Member}\;\Varid{xs}\;\Varid{s}\mathord{\sim}\Conid{False}){}\<[E]%
 \\
 \>[B]{}\hsindent{9}{}\<[9]%
-\>[9]{}\Rightarrow \Conid{Proxy}\;\Varid{s}{}\<[E]%
+\>[9]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Proxy}\;\Varid{x}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{s}\;\Varid{x})\;(){}\<[E]%
+\\
+\>[B]{}\Varid{declare}\;\Varid{s}\;\Varid{x}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{return}\;()~~,{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\Varid{renounce}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{s},\Conid{Member}\;\Varid{xs}\;\Varid{s}\mathord{\sim}\Conid{True}){}\<[E]%
 \\
 \>[B]{}\hsindent{9}{}\<[9]%
-\>[9]{}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Integer}){}\<[E]%
+\>[9]{}\Rightarrow \Conid{Proxy}\;\Varid{s}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{s})\;(){}\<[E]%
 \\
-\>[B]{}\Varid{llen}\;\Varid{key}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{\Conid{Hedis}.llen}\;(\Varid{encodeKey}\;\Varid{key}){}\<[E]%
+\>[B]{}\Varid{renounce}\;\Varid{s}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{return}\;()~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+The command \ensuremath{\Varid{declare}\;\Varid{s}\;\Varid{x}} adds a new key \ensuremath{\Varid{s}} with type \ensuremath{\Varid{x}} to the dictionary,
+if it does not already exist. Dually, \ensuremath{\Varid{renounce}} removes a key from the
+dictionary. Even though it may still exist in the data store, it is not allowed
+to be referred to. The command \ensuremath{\Varid{start}} initializes the dictionary to \ensuremath{\mbox{\textquotesingle}[~]}:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{start}\mathbin{::}\Conid{Edis}\;\mbox{\textquotesingle}[~]\;\mbox{\textquotesingle}[~]\;(){}\<[E]%
+\\
+\>[B]{}\Varid{start}\mathrel{=}\Conid{Edis}\mathbin{\$}\Varid{return}\;()~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\subsection{A Larger Example}
+
+The following program increases the value of \ensuremath{\text{\tt \char34 A\char34}} as an integer, push the result of the increment to list \ensuremath{\text{\tt \char34 L\char34}}, and then pops it out:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{13}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{19}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{23}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{24}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{33}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{main}\mathbin{::}\Conid{IO}\;(){}\<[E]%
+\\
+\>[B]{}\Varid{main}\mathrel{=}\mathbf{do}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Varid{conn}{}\<[13]%
+\>[13]{}\leftarrow \Varid{connect}\;\Varid{defaultConnectInfo}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Varid{result}{}\<[13]%
+\>[13]{}\leftarrow \Varid{runRedis}\;\Varid{conn}\mathbin{\$}\Varid{unEdis}\mathbin{\$}\Varid{start}{}\<[E]%
+\\
+\>[5]{}\hsindent{4}{}\<[9]%
+\>[9]{}\mathbin{`\Varid{bind}`}\lambda \anonymous \to {}\<[24]%
+\>[24]{}\Varid{declare}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34})\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\Conid{Integer}){}\<[E]%
+\\
+\>[5]{}\hsindent{4}{}\<[9]%
+\>[9]{}\mathbin{`\Varid{bind}`}\lambda \anonymous \to {}\<[24]%
+\>[24]{}\Varid{incr}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34}){}\<[E]%
+\\
+\>[5]{}\hsindent{4}{}\<[9]%
+\>[9]{}\mathbin{`\Varid{bind}`}\lambda \Varid{n}\to {}\<[23]%
+\>[23]{}\mathbf{case}\;\Varid{n}\;\mathbf{of}{}\<[E]%
+\\
+\>[9]{}\hsindent{4}{}\<[13]%
+\>[13]{}\Conid{Left}\;{}\<[19]%
+\>[19]{}\Varid{err}{}\<[24]%
+\>[24]{}\to \Varid{lpush}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 L\char34})\;\mathrm{0}{}\<[E]%
+\\
+\>[9]{}\hsindent{4}{}\<[13]%
+\>[13]{}\Conid{Right}\;\Varid{n}{}\<[24]%
+\>[24]{}\to \Varid{lpush}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 L\char34})\;\Varid{n}{}\<[E]%
+\\
+\>[5]{}\hsindent{4}{}\<[9]%
+\>[9]{}\mathbin{`\Varid{bind}`}\lambda \anonymous \to {}\<[24]%
+\>[24]{}\Varid{lpop}\;{}\<[33]%
+\>[33]{}(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 L\char34}){}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Varid{print}\;\Varid{result}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+The syntax is pretty heavy, like the old days when there's no
+ \emph{do-notation}\cite{history}. But if we don't need any variable bindings
+ between operations, we could compose these commands with a sequencing operator
+ \ensuremath{(\mathbin{>>>})}.
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}(\mathbin{>>>})\mathbin{::}\Conid{IMonad}\;\Varid{m}\Rightarrow \Varid{m}\;\Varid{p}\;\Varid{q}\;\Varid{a}\to \Varid{m}\;\Varid{q}\;\Varid{r}\;\Varid{b}\to \Varid{m}\;\Varid{p}\;\Varid{r}\;\Varid{b}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{17}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{program}\mathrel{=}\Varid{start}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{>>>}\Varid{declare}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34})\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{>>>}\Varid{incr}\;{}\<[17]%
+\>[17]{}(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34}){}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{>>>}\Varid{lpush}\;{}\<[17]%
+\>[17]{}(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 L\char34})\;\mathrm{0}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{>>>}\Varid{lpop}\;{}\<[17]%
+\>[17]{}(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 L\char34}){}\<[E]%
 \ColumnHook
 \end{hscode}\resethooks
