@@ -71,10 +71,13 @@ of different fields usually have different types. A proper implementation of
 this function in \Redis{} should return a \emph{heterogeneous list}~\cite{hetero} --- a list whose elements can be of different types. We
 also leave such functions as a future work.
 
-\paragraph{Not All Safe Redis Programs Can Be Typechecked.} (even if they
- might turn out to be type safe). We opted for type safety rather than
- expressiveness.
- \todo{more here.}
+\paragraph{Not All Safe Redis Programs Can Be Typechecked.}
+Enforcing a typing discipline rules out some programs that could possibly be erroneous, and reduces the number of programs that are allowed. Like all type
+systems, our type system takes a conservative estimation: there are bound to be
+some \Redis{} programs not are not typable in our type system, but do not
+actually throw a type error. We demand that elements in our lists must be
+of the same type, for example, while a \Redis{} program could store in a list
+different types of data, encoded as strings, and still works well.
 
 \paragraph{Transactions.} Commands in \Redis{} can be wrapped in
 \emph{transactions}. \Redis{} offers two promises regarding commands in a
@@ -82,8 +85,8 @@ transaction. Firstly, all commands in a transaction are serialized and
 executed sequentially, without interruption from another client. Secondly,
 either all of the commands or none are processed.
 
-At this point of writing, transactions are yet not supported in \Edis{}.
-We expecting that there would not be too much difficulty --- in an early
+Transactions are yet not supported in \Edis{}, but it is a future work.
+We expect that there would not be too much difficulty --- in an early
 experiment, we have implemented a runtime type checker specifically targeting
 \Redis{} transactions, and we believe that the experience should be applicable
 to static type checking as well.

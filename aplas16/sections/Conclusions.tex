@@ -2,7 +2,14 @@
 \section{Conclusions}
 \label{sec:conclusions}
 
-We have demonstrated how a DSL with variable bindings could be embedded in types.
-With more and more extensions added to the language, Haskell is gradually
- becoming a dependently-typed language,\footnote{Why not be dependently typed? \url{http://stackoverflow.com/questions/12961651/why-not-be-dependently-typed}}
- but it's not that dreadful as many (including us) would have thought.
+By exploiting various recent extensions and type-level programming techniques,
+we have designed a domain-specific embedded language \Edis{} which, at
+term-level, is simply a wrapper of \Hedis{}, but enforces typing disciplines that keeps track of available keys and their types and allows a program to be
+constructed only if it does not throw a runtime type error. We believe that it
+is a neat case study of application of type-level programming.
+
+
+
+% With more and more extensions added to the language, Haskell is gradually
+%  becoming a dependently-typed language,\footnote{Why not be dependently typed? \url{http://stackoverflow.com/questions/12961651/why-not-be-dependently-typed}}
+%  but it's not that dreadful as many (including us) would have thought.
