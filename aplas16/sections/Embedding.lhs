@@ -10,6 +10,7 @@ present our embedding of \Hedis{} commands into \Edis{}, while introducing
 necessary concepts when they are used.
 
 \subsection{Proxies and Singleton Types}
+\label{sec:proxy-key}
 
 The \Hedis{} function |del :: [ByteString] -> Either Reply Integer| takes a list
 of keys (encoded to |ByteString|) and removes the entries having those keys in
@@ -135,35 +136,52 @@ in a context where the type checker is able to reduce |Get xs s| to
 \label{sec:disjunctive-constraints}
 
 Recall, from Section \ref{sec:introduction}, that commands \texttt{LPUSH key
-val} and \texttt{LLEN key} returns normally either when |key| does not present
-in the data store, or when |key| presents and is associated to a list.
-What we wish to have in their constraint is thus a predicate equivalent to |Get xs s == Just (ListOf x) |||| not (Member xs s)|.
+val} and \texttt{LLEN key} returns normally either when |key| presents in the
+data store and is associated to a list, or when |key| does not present at all.
+What we wish to have in their constraint is thus a predicate equivalent to |Get xs s == Just (ListOf x) |||| not (Member xs s)|. In fact, many \Redis{} commands
+are invokable under such ``well-typed, or non-existent'' precondition.
 
 To impose a conjunctive constraint |P && Q|, one may simply put them both in the
 type: |(P, Q) => ...|. Expressing disjunctive constraints is only slightly
 harder, thanks to our type-level functions. Various operators for type-level
-boolean and equality are defined in \text{Data.Type.Bool} and
-\text{Data.Type.Equality}, like how we defined |Or| in Section
+boolean and equality are defined in \texttt{Data.Type.Bool} and
+\texttt{Data.Type.Equality}, like how we defined |Or| in Section
 \ref{sec:type-fun}. We may thus write the predicate as:
 \begin{spec}
 Get xs s == Just (ListOf x) `Or` Not (Member xs s) {-"~~."-}
 \end{spec}
-To avoid referring to |x|, which might not exist, we define an auxiliary predicate |IsList :: Maybe * -> Bool|:
+To avoid referring to |x|, which might not exist, we define an auxiliary predicate |IsList :: Maybe * -> Bool| such that |IsList x| reduces to |TRUE|
+only if |x = ListOf n|. As many \Redis{} commands are invokable only under such
+``well-typed, or non-existent'' precondition, we give names to such constraints,
+as seen in Figure~\ref{fig:xxxOrNX}.
+
+\begin{figure}[t]
 \begin{spec}
 type family IsList (x :: *) :: Bool where
-    IsList (ListOf n) = TRUE
-    IsList x          = FALSE {-"~~."-}
+    IsList (ListOf n)  = TRUE
+    IsList x           = FALSE
+type family IsSet (x :: *) :: Bool where
+    IsSet (SetOf n)  = TRUE
+    IsSet x          = FALSE
+type family IsString (x :: *) :: Bool where
+    IsString (StringOf n)  = TRUE
+    IsString x             = FALSE
+
+type ListOrNX xs s =
+  (IsList (FromJust (Get xs s)) || Not (Member xs s)) ~ TRUE
+type SetOrNX xs s =
+  (IsSet (FromJust (Get xs s)) || Not (Member xs s)) ~ TRUE
+type StringOrNX xs s =
+  (IsString (FromJust (Get xs s)) || Not (Member xs s)) ~ TRUE
 \end{spec}
-As many other list-related commands are also invokable under this
-``list or nothing'' precondition, we give the type constraint a name:
+\caption{The ``well-typed, or non-existent'' constraints.}
+\label{fig:xxxOrNX}
+\end{figure}
+
+The \Edis{} counterpart of \texttt{LPUSH} and \texttt{LLEN} are therefore:
 \begin{spec}
-ListOrNX xs s = (IsList (Get xs s) `Or` Not (Member xs s)) ~ True {-"~~."-}
-\end{spec}
-\noindent The complete implementation of \text{LLEN} with
-|ListOrNX| is therefore:
-\begin{spec}
-lpush :: (KnownSymbol s, Serialize x, ListOrNX xs s)
-      => Proxy s -> x -> Edis xs (Set xs s (ListOf x)) (Either Reply Integer)
+lpush  :: (KnownSymbol s, Serialize x, ListOrNX xs s)
+       => Proxy s -> x -> Edis xs (Set xs s (ListOf x)) (Either Reply Integer)
 lpush key val = Edis $ Redis.lpush (encodeKey key) [encode val] {-"~~,"-}
 
 llen  :: (KnownSymbol s, ListOrNX xs s)
@@ -177,12 +195,10 @@ sadd  :: (KnownSymbol s, Serialize x, SetOrNX xs s)
       => Proxy s -> Edis xs (Set xs s (SetOf x)) (Either Reply Integer)
 sadd key val = Edis $ Redis.sadd (encodeKey key) [encode val] {-"~~,"-}
 \end{spec}
-where |SetOrNX| is similar to |ListOrNX|: |SetOrNX xs s| holds if either
-|s| is associated to a set, or |s| is not in |xs|.
 
 \todo{why cite \cite{singletons} here?}
 
-For a slightly complex example, consider the function |setnx| below, which
+To see a command with a more complex type, consider |setnx|, which
 uses the type-level function |If| defined in Section \ref{sec:type-fun}:
 \begin{spec}
 setnx  :: (KnownSymbol s, Serialize x)

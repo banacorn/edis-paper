@@ -33,6 +33,7 @@
 %format SUC = "\mbox{\textquotesingle}\Conid{Suc}"
 %format TRUE = "\mbox{\textquotesingle}\Conid{True}"
 %format FALSE = "\mbox{\textquotesingle}\Conid{False}"
+%format JUST = "\mbox{\textquotesingle}\Conid{Just}"
 %format NIL = "\mbox{\textquotesingle}[~]"
 %format :- = "\mathbin{\mbox{\textquotesingle}\!:}"
 %format OpenTList = "\mbox{\textquotesingle}[\!"

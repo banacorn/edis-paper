@@ -10,85 +10,82 @@
 %  in two places: \emph{symbol singletons} and \emph{indexed monad}. We are hoping
 %  that these issues could be resolved with future syntactic extensions.
 
-\paragraph{Returning only determined datatypes}
-Many commands in Redis are invokable under preconditions similar to the
-``list or nothing'' constraint mentioned in
-Section~\ref{sec:disjunctive-constraints}. Consider \texttt{GET}, which fetches
-a string associated with a key and should be typed:
+\paragraph{Returning Inferable Types.} \texttt{GET} is yet another command that
+is invokable only under a ``well-typed or non-existent'' precondition,
+mentioned in Section~\ref{sec:disjunctive-constraints}. It fetches the value of
+a key and, if the key does not exist, returns a special value \texttt{nil}. An
+error is raised if the value is not a string. In \Edis{} the situation is made
+slightly complex, since we parse the string to the type it was supposed to have
+encoded from. The \Edis{} version of |get| could be typed:
 \begin{spec}
-get :: (KnownSymbol s, Serialize x, StringOrNX xs s)
-    => Proxy s -> Edis xs xs (Either Reply (Maybe x)) {-"~~."-}
-\end{spec}
-The constraint |StringOrNX| is defined by
-\begin{spec}
-type StringOrNX xs s =
-  (IsString (FromJust (Get xs s)) `Or` Not (Member xs s)) ~ TRUE {-"~~,"-}
-\end{spec}
-where |IsString (StringOf n)| is |TRUE| for all type |n|, and |IsString x|
-is |FALSE| otherwise.
-% type family IsString (x :: *) :: Bool where
-%     IsString (StringOf n) = 'True
-%     IsString x            = 'False
-
-Since the key might not exist, we don't know what |x| would
-be. We could left |x| ambiguous, and let it be decided by
- the caller. But users will then be forced to spell out the complete
-type signature of everything, including the dictionaries, only to specify
-the desired resulting type.
-
-Instead of allowing the key to be non-existent, we require that the key must
- exist and it's associating type to be determined at compile time. So our
- version of |get| has a stricter semantics:
-
-\begin{spec}
-get  :: (KnownSymbol s, Serialize x, Just (StringOf x) ~ Get xs s)
+get  :: (KnownSymbol s, Serialize x, StringOrNX xs s)
      => Proxy s -> Edis xs xs (Either Reply (Maybe x)) {-"~~."-}
 \end{spec}
+where |StringOrNX| is defined in Figure~\ref{fig:xxxOrNX}.
 
-\paragraph{Commands with multiple inputs or outputs}
+The problem with such typing, however, is that |x| cannot be inferred from |xs|
+and |s| when |s| does not appear in |xs|. In such situations, to avoid Haskell
+complaining about ambiguous type, |x| has to be specified by the caller of
+|get|. The user will then be forced to spell out the complete type signature,
+only to make |x| explicit.
 
-Some command may take a variable number of arguments as inputs, and returns more
- than one value as outputs. To illustrate this, consider
- |sinter| in Hedis:
-
+We think it is more reasonable to enforce that, when |get| is called, the key
+should exist in the data store. Thus |get| in \Redis{} has the following type:
 \begin{spec}
-Hedis.sinter :: [ByteString]                      -- keys
-             -> Redis (Either Reply [ByteString]) -- values
+get  :: (KnownSymbol s, Serialize x, Just (StringOf x) ~ Get xs s)
+     => Proxy s -> Edis xs xs (Either Reply (Maybe x)) {-"~~,"-}
+\end{spec}
+which requires that |(s,x)| presents in |xs| and thus |x| is inferrable from
+|xs| and |s|.
+
+\paragraph{Commands with Variable Numbers of Input/Outputs.} Recall that, in
+Section~\ref{sec:proxy-key}, the \Redis{} command \texttt{DEL} takes a variable
+number of keys, while our \Edis{} counterpart takes only one. Some \Redis{}
+commands take a variable number of arguments as inputs, and some returns
+multiple results. Most of them are accurately implemented in \Hedis{}. For another example of a variable-input command, |sinter| in \Hedis{}, whose type
+is shown below:
+\begin{spec}
+Hedis.sinter :: [ByteString] -> Redis (Either Reply [ByteString]) {-"~~,"-}
+\end{spec}
+takes a list of keys, values of which are all supposed to be sets, and computes
+their intersection (the returned list is the intersected set).
+
+In \Edis{}, for a function to accept a list of keys as input, we have to
+specify that all the keys are in the class |KnownSymbol|. This is possible --
+we may define a datatype, indexed by the keys, serving as a witness that they
+are all in |KnownSymbol|. We currently have not implemented such feature and
+leave it as a possible future work. For now, we offer commands that take fixed
+numbers of inputs. The \Edis{} counter part of |sinter| is:
+\begin{spec}
+sinter  :: (  KnownSymbol s, KnownSymbol t, Serialize x,
+              JUST (SetOf x) ~ Get xs s, SetOrNX xs s)
+        => Proxy s -> Proxy t -> Edis xs xs (Either Reply [x]) {-"~~."-}
 \end{spec}
 
-In Hedis such command could easily be expressed with lists of
- |ByteString|s. But in \Edis{}, things escalate quickly, as
- the keys and values will have to be expressed with \emph{heterogeneous
- lists}\cite{hetero}, which would be pratically infeasible, considering the cost,
- if not impossible.
-
-Most importantly, the keys will all have to be constrained by
- |KnownSymbol|, which enforces these type literals to be
- concrete and known at compile time.
- It's still unclear whether this is possible.
-
-So instead, we are offering commands that only has a single input and output.
-
+The function |hgetall| in \Hedis{} implements the \Redis{} command \texttt{HGETALL} and has the following type:
 \begin{spec}
-sinter :: ByteString                      -- single key
-       -> Redis (Either Reply ByteString) -- single value
+Hedis.hgetall :: ByteString -> Redis (Either Reply [(ByteString, ByteString)]) {-"~~."-}
 \end{spec}
+It returns all the field-value pairs associated to a key in a hash table. Values
+of different fields usually have different types. A proper implementation of
+this function in \Redis{} should return a \emph{heterogeneous list}~\cite{hetero} --- a list whose elements can be of different types. We
+also leave such functions as a future work.
 
-\textbf{Not all Redis programs can be typechecked} (even if they
+\paragraph{Not All Safe Redis Programs Can Be Typechecked.} (even if they
  might turn out to be type safe). We opted for type safety rather than
  expressiveness.
+ \todo{more here.}
 
-\paragraph{Redis Transactions}
+\paragraph{Transactions.} Commands in \Redis{} can be wrapped in
+\emph{transactions}. \Redis{} offers two promises regarding commands in a
+transaction. Firstly, all commands in a transaction are serialized and
+executed sequentially, without interruption from another client. Secondly,
+either all of the commands or none are processed.
 
-Redis has \emph{transactions}, another context for executing commands.
-Redis transactions are atomic in the sense that, all commands in a transaction
- will executed sequentially, and no other requests issued by other clients will
- be served \textbf{in the middle}.\footnotemark In contrast, we cannot make such
- a guarantee in the ordinary context, which may destroy the assertions we made
- in types.
+At this point of writing, transactions are yet not supported in \Edis{}.
+We expecting that there would not be too much difficulty --- in an early
+experiment, we have implemented a runtime type checker specifically targeting
+\Redis{} transactions, and we believe that the experience should be applicable
+to static type checking as well.
 
-At this point of writing, transactions are not supported in our implementation.
- We are planning to add it in the future, and we are expecting that there
- wouldn't be much difficulty, since we've implemented a runtime type checker
- specifically targeting Redis transactions once, before we moved on to the
- types.
+\todo{|RedisTx Queued|}
