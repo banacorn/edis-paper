@@ -12,22 +12,20 @@ necessary concepts when they are used.
 \subsection{Proxies and Singleton Types}
 \label{sec:proxy-key}
 
-The \Hedis{} function |del :: [ByteString] -> Either Reply Integer| takes a list
-of keys (encoded to |ByteString|) and removes the entries having those keys in
-the database. For simplicity, we consider creating a \Edis{} counterpart
-that takes only one key. A first attempt may lead to something like the
-following:
+The \Hedis{} function |del :: [ByteString] -> Redis (EitherReply Integer)| takes a list of keys (encoded to |ByteString|) and removes the entries having those
+keys in the database. For reason to be explained later, we consider an \Edis{}
+counterpart that takes only one key. A first attempt may lead to something like
+the following:
 \begin{spec}
-del :: String -> Edis xs (Del xs {-"~"-}?) (Either Reply Integer)
+del :: String -> Edis xs (Del xs {-"~"-}?) (EitherReply Integer)
 del key = Edis $ Hedis.del [encode key] {-"~~,"-}
 \end{spec}
 where the function |encode| converts |String| to |ByteString|. At term-level,
-our |del| merely calls |Hedis.del|. At
-type-level, if the status of the database before |del| is called is specified
-by the dictionary |xs|, the status afterwards should be specified by
-|Del xs {-"~"-}?|. The question, however, is what to fill in place of the
-question mark. It cannot be |Del xs key|, since |key| is a runtime value and
-not a type. How do we smuggle a runtime value to type-level?
+our |del| merely calls |Hedis.del|. At type-level, if the status of the database
+before |del| is called meets the constraint represented by the dictionary
+|xs|, the status afterwards should meet the constraint |Del xs {-"~"-}?|. The question, however, is what to fill in place of the question mark. It cannot be
+|Del xs key|, since |key| is a runtime value and not a type. How do we smuggle
+a runtime value to type-level?
 
 In a language with phase distinction like Haskell, it is certainly impossible
 to pass the value of |key| to the type checker if it truly is a runtime value,
@@ -36,42 +34,42 @@ determined statically, however, {\em singleton types} can be used to represent a
 type as a value, thus build a connection between the two realms.
 
 A singleton type is a type that has only one term. When the term is built, it
-carries a type that can be inspected by the type checker. The term can be think
-of as a representative of its type at the realm of runtime values. For our
-purpose, we will use the following type |Proxy|:
+carries a type that can be inspected by the type checker. The term can be
+thought of as a representative of its type at the realm of runtime values. For
+our purpose, we will use the following type |Proxy|:
 \begin{spec}
 data Proxy t = Proxy {-"~~."-}
 \end{spec}
 For every type |t|, |Proxy t| is a type that has only one term: |Proxy|.%
 \footnote{While giving the same name to both the type and the term can be very
 confusing, it is unfortunately a common practice in the Haskell community.}
-To call |del|, instead of passing a key as a |String|, we give it a proxy with
-a specified type:
+To call |del|, instead of passing a key as a |String| value, we give it a proxy
+with a specified type:
 \begin{spec}
 del (Proxy :: Proxy "A") {-"~~,"-}
 \end{spec}
 where |"A"| is not a value, but a string lifted to a type (of kind |Symbol|).
-Now that the type checker has access to the key, the type of |del| could be
-something alone the line of |del :: Proxy s -> Edis xs (Del xs s) ...|.
+Now that the type checker has access to the key, the type of |del| can be
+|Proxy k -> Edis xs (Del xs k) (EitherReply Integer)|.
 
 The next problem is that, |del|, at term level, gets only a value constructor
 |Proxy| without further information, while it needs to pass a |ByteString| key
 to |Hedis.del|. Every concrete string literal lifted to a type, for example
-|"A"|, belongs to a type class |KnownSymbol|. For all type |n| in |KnownSymbol|,
+|"A"|, belongs to a type class |KnownSymbol|. For all type |k| in |KnownSymbol|,
 the function |symbolVal|:
-< symbolVal :: KnownSymbol n => proxy n -> String {-"~~,"-}
+< symbolVal :: KnownSymbol k => proxy k -> String {-"~~,"-}
 retrieves the string associated with a type-level literal that is known at
 compile time. In summary, |del| can be implemented as:
 \begin{spec}
-del  :: KnownSymbol s
-     => Proxy s -> Edis xs (Del xs s) (Either Reply Integer)
+del  :: KnownSymbol k
+     => Proxy k -> Edis xs (Del xs k) (EitherReply Integer)
 del key = Edis (Hedis.del [encodeKey key])  {-"~~,"-}
 \end{spec}
 where |encodeKey = encode . symbolVal|.
 
 A final note: the function |encode|, from the Haskell library {\sc cereal},
 helps to convert certain datatype that are {\em serializable} into |ByteString|.
-The function and its dual |decode| will be use more later.
+The function and its dual |decode| will be used more later.
 \begin{spec}
 encode  :: Serialize a => a -> ByteString {-"~~,"-}
 decode  :: Serialize a => ByteString -> Either String a {-"~~."-}
@@ -90,22 +88,21 @@ types of the strings in the data store.
 To keep track of intended types of strings in the data store, we define the
 following types (that have no terms):
 \begin{spec}
-data StringOf x {-"~~,"-}
-data ListOf x {-"~~,"-}
-data SetOf x {-"~~..."-}
+data StringOf  :: * -> * {-"~~,"-}
+data ListOf    :: * -> * {-"~~,"-}
+data SetOf     :: * -> * {-"~~..."-}
 \end{spec}
-If an key is associated with, for example, |StringOf Int| in
-our dictionary, we mean that its associated value in the data store was
-serialized from an |Int| and should be used as an |Int|. Types
-|ListOf x| and |SetOf x|, respectively, denotes that the value is a list
-or a set of the given type.
+If a key is associated with, for example, |StringOf Int| in our dictionary, we
+mean that its value in the data store was serialized from an |Int| and should be
+used as an |Int|. Types |ListOf a| and |SetOf a|, respectively, denotes that the
+value is a list or a set of type |a|.
 
 While the |set| command in \Hedis{} always writes a string to the data store,
 the corresponding |set| in \Redis{} applies to any serializable type (those
 in the class |Serialize|), and performs the encoding for the user:
 \begin{spec}
-set  :: (KnownSymbol s, Serialize x)
-     => Proxy s -> x -> Edis xs (Set xs s (StringOf x)) (Either Reply Status)
+set  :: (KnownSymbol k, Serialize a)
+     => Proxy k -> a -> Edis xs (Set xs k (StringOf a)) (Either Reply Status)
 set key val = Edis $ Hedis.set (encodeKey key) (encode val) {-"~~,"-}
 \end{spec}
 For example, executing |set (Proxy :: Proxy "A") True| updates the dictionary
@@ -113,24 +110,22 @@ with an entry |TPar ("A", StringOf Bool)|. If |"A"| is not in the dictionary,
 this entry is added; otherwise the old type of |"A"| is updated to
 |StringOf Bool|.
 
-\Redis{} command \texttt{INCR} reads the string associated with the given key,
-parse it as an integer, and increments it, before storing it back. The command
-\texttt{INCRBYFLOAT} increments the floating number, associated to the given
-key. They can be
+\Redis{} command \texttt{INCR} reads the (string) value of the given key, parse
+it as an integer, and increments it, before storing it back. The command
+\texttt{INCRBYFLOAT} increments a floating number, assigned to |key|. They are defined in \Edis{} below:
 \begin{spec}
-incr  :: (KnownSymbol s, Get xs s ~ Just (StringOf Integer))
-      => Proxy s -> Edis xs xs (Either Reply Integer)
+incr  :: (KnownSymbol k, Get xs k ~ Just (StringOf Integer))
+      => Proxy k -> Edis xs xs (EitherReply Integer)
 incr key = Edis $ Hedis.incr (encodeKey key) {-"~~,"-}
 
-incrbyfloat  :: (KnownSymbol s, Get xs s ~ Just (StringOf Double))
-             => Proxy s -> Double -> Edis xs xs (Either Reply Double)
+incrbyfloat  :: (KnownSymbol k, Get xs k ~ Just (StringOf Double))
+             => Proxy k -> Double -> Edis xs xs (EitherReply Double)
 incrbyfloat key eps = Edis $ Hedis.incrbyfloat (encodeKey key) eps {-"~~."-}
 \end{spec}
 Notice the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
-that the intended type of value associated with key |s| must respectively be
-|Integer| and |Double|. The function |incr| is allowed to be called only
-in a context where the type checker is able to reduce |Get xs s| to
-|Just (StringOf Integer)|. Similarly with |incrbyfloat|.
+that the intended type of value of |k| must respectively be |Integer| and
+|Double|. The function |incr| is allowed to be called only in a context where
+the type checker is able to reduce |Get xs k| to |Just (StringOf Integer)|. Similarly with |incrbyfloat|.
 
 \subsection{Disjunctive Constraints}
 \label{sec:disjunctive-constraints}
@@ -138,41 +133,38 @@ in a context where the type checker is able to reduce |Get xs s| to
 Recall, from Section \ref{sec:introduction}, that commands \texttt{LPUSH key
 val} and \texttt{LLEN key} returns normally either when |key| presents in the
 data store and is associated to a list, or when |key| does not present at all.
-What we wish to have in their constraint is thus a predicate equivalent to |Get xs s == Just (ListOf x) |||| not (Member xs s)|. In fact, many \Redis{} commands
+What we wish to have in their constraint is thus a predicate equivalent to |Get xs k == Just (ListOf a) |||| not (Member xs k)|. In fact, many \Redis{} commands
 are invokable under such ``well-typed, or non-existent'' precondition.
 
 To impose a conjunctive constraint |P && Q|, one may simply put them both in the
 type: |(P, Q) => ...|. Expressing disjunctive constraints is only slightly
-harder, thanks to our type-level functions. Various operators for type-level
-boolean and equality are defined in \texttt{Data.Type.Bool} and
-\texttt{Data.Type.Equality}, like how we defined |Or| in Section
-\ref{sec:type-fun}. We may thus write the predicate as:
+harder, thanks to our type-level functions. We may thus write the predicate as:
 \begin{spec}
-Get xs s == Just (ListOf x) `Or` Not (Member xs s) {-"~~."-}
+Get xs k ~ Just (ListOf a) `Or` Not (Member xs k) {-"~~."-}
 \end{spec}
-To avoid referring to |x|, which might not exist, we define an auxiliary predicate |IsList :: Maybe * -> Bool| such that |IsList x| reduces to |TRUE|
-only if |x = ListOf n|. As many \Redis{} commands are invokable only under such
+To avoid referring to |a|, which might not exist, we define an auxiliary predicate |IsList :: Maybe * -> Bool| such that |IsList t| reduces to |TRUE|
+only if |t = ListOf a|. As many \Redis{} commands are invokable only under such
 ``well-typed, or non-existent'' precondition, we give names to such constraints,
 as seen in Figure~\ref{fig:xxxOrNX}.
 
 \begin{figure}[t]
 \begin{spec}
-type family IsList (x :: *) :: Bool where
-    IsList (ListOf n)  = TRUE
-    IsList x           = FALSE
-type family IsSet (x :: *) :: Bool where
-    IsSet (SetOf n)  = TRUE
-    IsSet x          = FALSE
-type family IsString (x :: *) :: Bool where
-    IsString (StringOf n)  = TRUE
-    IsString x             = FALSE
+type family IsList (t :: *) :: Bool where
+    IsList (ListOf a)  = TRUE
+    IsList t           = FALSE
+type family IsSet (t :: *) :: Bool where
+    IsSet (SetOf a)  = TRUE
+    IsSet t          = FALSE
+type family IsString (t :: *) :: Bool where
+    IsString (StringOf a)  = TRUE
+    IsString t             = FALSE
 
-type ListOrNX xs s =
-  (IsList (FromJust (Get xs s)) || Not (Member xs s)) ~ TRUE
-type SetOrNX xs s =
-  (IsSet (FromJust (Get xs s)) || Not (Member xs s)) ~ TRUE
-type StringOrNX xs s =
-  (IsString (FromJust (Get xs s)) || Not (Member xs s)) ~ TRUE
+type ListOrNX    xs k =
+  (IsList    (FromJust (Get xs k)) || Not (Member xs k)) ~ TRUE
+type SetOrNX     xs k =
+  (IsSet     (FromJust (Get xs k)) || Not (Member xs k)) ~ TRUE
+type StringOrNX  xs k =
+  (IsString  (FromJust (Get xs k)) || Not (Member xs k)) ~ TRUE
 \end{spec}
 \caption{The ``well-typed, or non-existent'' constraints.}
 \label{fig:xxxOrNX}
@@ -180,34 +172,32 @@ type StringOrNX xs s =
 
 The \Edis{} counterpart of \texttt{LPUSH} and \texttt{LLEN} are therefore:
 \begin{spec}
-lpush  :: (KnownSymbol s, Serialize x, ListOrNX xs s)
-       => Proxy s -> x -> Edis xs (Set xs s (ListOf x)) (Either Reply Integer)
+lpush  :: (KnownSymbol k, Serialize a, ListOrNX xs k)
+       => Proxy k -> a -> Edis xs (Set xs k (ListOf a)) (EitherReply Integer)
 lpush key val = Edis $ Redis.lpush (encodeKey key) [encode val] {-"~~,"-}
 
-llen  :: (KnownSymbol s, ListOrNX xs s)
-      => Proxy s -> Edis xs xs (Either Reply Integer)
+llen  :: (KnownSymbol k, ListOrNX xs k)
+      => Proxy k -> Edis xs xs (EitherReply Integer)
 llen key = Edis $ Hedis.llen (encodeKey key) {-"~~."-}
 \end{spec}
 Similarly, the type of |sadd|, a function we have talked about a lot,
 is given below:
 \begin{spec}
-sadd  :: (KnownSymbol s, Serialize x, SetOrNX xs s)
-      => Proxy s -> Edis xs (Set xs s (SetOf x)) (Either Reply Integer)
+sadd  :: (KnownSymbol k, Serialize a, SetOrNX xs k)
+      => Proxy k -> Edis xs (Set xs k (SetOf a)) (EitherReply Integer)
 sadd key val = Edis $ Redis.sadd (encodeKey key) [encode val] {-"~~,"-}
 \end{spec}
-
-\todo{why cite \cite{singletons} here?}
 
 To see a command with a more complex type, consider |setnx|, which
 uses the type-level function |If| defined in Section \ref{sec:type-fun}:
 \begin{spec}
-setnx  :: (KnownSymbol s, Serialize x)
-       => Proxy s -> x -> Edis xs  (If (Member xs s) xs (Set xs s (StringOf x)))
+setnx  :: (KnownSymbol k, Serialize a)
+       => Proxy k -> a -> Edis xs  (If (Member xs k) xs (Set xs k (StringOf a)))
                                    (Either Reply Bool)
-setnx s x = Edis $ Redis.setnx (encodeKey s) (encode x) {-"~~."-}
+setnx key val = Edis $ Redis.setnx (encodeKey key) (encode val) {-"~~."-}
 \end{spec}
-From the type one can see that |setnx s x| creates a new entry |(s,x)| only if
-|s| is fresh in the data store. The type of the function computes a
+From the type one can see that |setnx key val| creates a new entry |(key,val)|
+in the data store only if |key| is fresh. The type of |setnx| computes a
 postcondition for static checking, as well as serving as a good documentation
 for its semantics.
 
@@ -218,16 +208,15 @@ Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
 very error-prone. It might be preferable if we can explicit declare some new
 keys, after ensure that they do not already exist (in our types). This can be done below:
 \begin{spec}
-declare :: (KnownSymbol s, Member xs s ~ False)
-        => Proxy s -> Proxy x -> Edis xs (Set xs s x) ()
-declare s x = Edis $ return () {-"~~."-}
+declare  :: (KnownSymbol k, Member xs a ~ False)
+         => Proxy k -> Proxy a -> Edis xs (Set xs k a) ()
+declare key val = Edis $ return () {-"~~."-}
 \end{spec}
 % renounce :: (KnownSymbol s, Member xs s ~ True)
 %         => Proxy s -> Edis xs (Del xs s) ()
 % renounce s = Edis $ return () {-"~~."-}
-The command |declare s x| adds a new key |s| with type |x| to the dictionary,
-if it does not already exist. The command |start| initializes the dictionary to
-|NIL|:
+The command |declare key val| adds a fresh |key| with type |a| and value
+|val|. The type ensure that |key| does not already exist. The command |start| initializes the dictionary to the empty list:
 \begin{spec}
 start :: Edis NIL NIL ()
 start = Edis $ return () {-"~~."-}
@@ -266,3 +255,5 @@ program = start
     >>> lpush   (Proxy :: Proxy "L") 0
     >>> lpop    (Proxy :: Proxy "L")
 \end{spec}
+
+\todo{Give a more interesting example?}

@@ -27,14 +27,14 @@ National Chiao Tung University, Taiwan}
 \maketitle
 
 \begin{abstract}
-\Redis{} is an in-memory data strcture store, often used as a database, with a
-Haskell interface \Hedis{}. \Redis{} is dynamically typed --- a value associated
-with a key can be overwritten by a value of a different type, and a command,
+\Redis{} is an in-memory data structure store, often used as a database, with a
+Haskell interface \Hedis{}. \Redis{} is dynamically typed --- a key can be
+discarded and re-associated to a value of a different type, and a command,
 when fetching a value of a type it does not expect, signals a runtime error. We
 develop a domain-specific language that, by exploiting Haskell type-level
 programming techniques including indexed monad, type-level literals and closed
 type families, keeps track of types of values in the database and statically
-guarantees that type errors cannot happen.
+guarantees that type errors cannot happen for a class of \Redis{} programs.
 \end{abstract}
 
 \input{sections/Introduction}
@@ -42,7 +42,6 @@ guarantees that type errors cannot happen.
 \input{sections/TypeLevelDict}
 \input{sections/Embedding}
 \input{sections/Discussions}
-\input{sections/Related}
 \input{sections/Conclusions}
 
 \bibliographystyle{splncs03}

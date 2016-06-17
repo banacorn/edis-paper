@@ -5,21 +5,21 @@
 \section{Type-Level Dictionaries}
 \label{sec:type-level-dict}
 
-One of the challenges of statically ensuring type correctness of \Redis{},
-which also presents in other stateful languages, is that the type of the value
-associated to a key can be altered after updating. \todo{Is it so in \Redis{}?}
-To ensure type correctness, we keep track of the types of all existing keys in a {\em dictionary} --- conceptually, an associate list, or a list of pairs of keys
-and some encoding of types. For example, we may want the dictionary |[("A",Int),
-("B", Char), ("C", Bool)]| to represent a predicate stating that ``the keys |"A"|, |"B"|, and |"C"| are respectively associated to values of type |Int|,
-|Char|, and |Bool|.''
+One of the challenges of statically ensuring type correctness of stateful
+languages is that the type of the value of a key can be altered by updating.
+In \Redis{}, one may delete an existing key and create it again by assigning to
+it a value of a different type. To ensure type correctness, we keep track of the
+types of all existing keys in a {\em dictionary} --- conceptually, an associate list, or a list of pairs of keys and some encoding of types. For example, we may want the dictionary |[("A",Int), ("B", Char), ("C", Bool)]| to represent a
+predicate, or a constraint, stating that ``the keys in the data store are |"A"|,
+|"B"|, and |"C"|, respectively assigned values of type |Int|, |Char|, and
+|Bool|.''
 
 The dictionary above mixes values (strings such as |"A"|, |"B"|) and types.
 Further more, as mentioned in Section~\ref{sec:indexed-monads}, the
-dictionaries will be parameters to the indexed monad |Edis|. In a
-dependently typed programming language (without the so-called ``phase
-distinction'' --- separation between types and terms), this would pose no
-problem. In Haskell however, the dictionaries, to index a monad, has to be a
-type as well.
+dictionaries will be parameters to the indexed monad |Edis|. In a dependently
+typed programming language (without the so-called ``phase distinction'' ---
+separation between types and terms), this would pose no problem. In Haskell
+however, the dictionaries, to index a monad, has to be a type as well.
 
 In this section we describe how to construct a type-level dictionary, to be
 used with the indexed monad in Section~\ref{sec:indexed-monads}.
@@ -64,9 +64,7 @@ Tuples are also promoted. Thus we may put two types in a pair to form another
 type, such as in |TPar (Int, Char)|, a type having kind |(*,*)|.
 
 Strings in Haskell are nothing but lists of |Char|s. Regarding promotion,
-however, a |String| can be promoted to a type having kind |Symbol|. |Symbol| is
-a type without a constructor: |data Symbol|, intended to be used as a promoted
-kind. In the expression:
+however, a string can be promoted to a type having kind |Symbol|. In the expression:
 \begin{spec}
 "this is a type-level string literal" :: Symbol {-"~~,"-}
 \end{spec}
@@ -90,10 +88,10 @@ operations on them. A function that inserts an entry to a dictionary, for
 example, is a function from a type to a type. While it was shown that it is
 possible to simulate type-level functions using Haskell type
 classes~\cite{McBride:02:Faking}, in recent versions of GHC, {\em indexed type
-families}, or type families for short, are considered a cleaner solution.
+families}, or \emph{type families} for short, are considered a cleaner solution.
 
 For example, compare disjunction |(||||)| and its type-level
-counterpart |Or|:\\
+counterpart:\\
 \noindent{\centering %\small
 \begin{minipage}[b]{0.35\linewidth}
 \begin{spec}
@@ -105,8 +103,8 @@ a     &&  b  = b {-"~~,"-}
 \begin{minipage}[b]{0.55\linewidth}
 \begin{spec}
 type family Or (a :: Bool) (b :: Bool) :: Bool
-  where  Or  True  b  = True
-         Or  a     b  = b {-"~~."-}
+  where  True || b  = True
+         a    || b  = b {-"~~."-}
 \end{spec}
 \end{minipage}
 }\\
@@ -115,8 +113,8 @@ On the righthand side, |Bool| is not a type, but a type lifted to a kind,
 while |True| and |False| are types of kind |Bool|. The declaration says that
 |Or| is a family of types, indexed by two parameters |a| and |b| of kind |Bool|.
 The type with index |True| and |b| is |True|, and all other indices lead to |b|.
-For our purpose, we can read |Or| as a function from types to types --- observe
-how it resembles the term-level |(||||)|. We present two more type-level
+For our purpose, we can read |Or| as a function from types to types ---
+observe how it resembles the term-level |(||||)|. We present two more type-level
 functions about |Bool| --- negation, and conditional, that we will use later:\\
 \noindent{\centering %\small
 \begin{minipage}[b]{0.35\linewidth}
@@ -135,22 +133,22 @@ type family If (c :: Bool) (t :: a) (f :: a) :: a where
 \end{minipage}
 }
 
-As a remark, type families in Haskell come in many flavors. Families can
-be defined for |data| and |type| synonym. They can appear inside type
-classes~\cite{tfclass,tfsynonym} or at toplevel. Toplevel type families can be
-open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we chose is top-level,
-closed type synonym family, since it allows overlapping instances, and since we need none of the extensibility provided by open type families. Notice that the instance |Or True b| could be subsumed under the more general instance, |Or a
-b|. In a closed type family we may resolve the overlapping in order, just like
-how cases overlapping is resolved in term-level functions.
+As a remark, type families in Haskell come in many flavors. One can define families of |data|, as well as families of |type| synonym. They can appear
+inside type classes~\cite{tfclass,tfsynonym} or at toplevel. Top-level type families can be open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we
+chose is top-level, closed type synonym family, since it allows overlapping
+instances, and since we need none of the extensibility provided by open type
+families. Notice that the instance |Or True b| could be subsumed under the more
+general instance, |Or a b|. In a closed type family we may resolve the overlapping in order, just like how cases overlapping is resolved in term-level
+functions.
 
 %\subsection{Functions on Type-Level Dictionaries}
 
 We are now able to define operations on type-level dictionaries. Let's begin
 with dictionary lookup.
 \begin{spec}
-type family Get (xs :: [(Symbol, *)]) (s :: Symbol) :: * where
-    Get (TPar (s, x) :- xs) s  =  x
-    Get (TPar (t, x) :- xs) s  =  Get xs s {-"~~."-}
+type family Get (xs :: [(Symbol, *)]) (k :: Symbol) :: * where
+    Get (TPar (k, x) :- xs) k  =  x
+    Get (TPar (t, x) :- xs) k  =  Get xs k {-"~~."-}
 \end{spec}
 The type-level function |Get| returns the entry associated with key |s| in the
 dictionary |xs|. Notice, in the first case, how type-level equality can be
@@ -159,12 +157,13 @@ a partial function on types: while |Get (TList (TPar ("A", Int))) "A"| evaluates
 to |Int|, when |Get (TList (TPar ("A", Int))) "B"| appears in a type expression,
 there are no applicable rules to reduce it. The expression thus stays as it is.
 
-We could make |Get| total, as we would at the term level, with |Maybe|:
+For our applications it is more convenient to make |Get| total, as we would at
+the term level, by having it return a |Maybe|:
 \begin{spec}
-type family Get (xs :: [(Symbol, *)]) (s :: Symbol) :: Maybe * where
-    Get NIL                 s = Nothing
-    Get (TPar(s, x) :- xs)  s = Just x
-    Get (TPar(t, x) :- xs)  s = Get xs s {-"~~."-}
+type family Get (xs :: [(Symbol, *)]) (k :: Symbol) :: Maybe * where
+    Get NIL                 k = Nothing
+    Get (TPar(k, x) :- xs)  k = Just x
+    Get (TPar(t, x) :- xs)  k = Get xs k {-"~~."-}
 \end{spec}
 %
 Some other dictionary-related functions are defined in a similar fashion
@@ -176,22 +175,22 @@ dictionary.
 \begin{figure}[t]
 \begin{spec}
 -- inserts or updates an entry
-type family Set  (xs :: [(Symbol, *)]) (s :: Symbol) (x :: *) :: [(Symbol, *)] where
-    Set NIL                 s x = TList (TPar (s, x))
-    Set (TPar(s, y) :- xs)  s x = TPar (s, x) :- xs
-    Set (TPar(t, y) :- xs)  s x = TPar (t, y) :- Set xs s x
+type family Set  (xs :: [(Symbol, *)]) (k :: Symbol) (x :: *) :: [(Symbol, *)] where
+    Set NIL                 k x = TList (TPar (k, x))
+    Set (TPar(k, y) :- xs)  k x = TPar (k, x)  :- xs
+    Set (TPar(t, y) :- xs)  k x = TPar (t, y)  :- Set xs k x
 
 -- removes an entry
-type family Del  (xs :: [(Symbol, *)]) (s :: Symbol) :: [(Symbol, *)] where
-    Del Nil                 s  = Nil
-    Del (TPar (s, y) :- xs) s  = xs
-    Del (TPar (t, y) :- xs) s  = TPar (t, y) :- Del xs s
+type family Del  (xs :: [(Symbol, *)]) (k :: Symbol) :: [(Symbol, *)] where
+    Del Nil                  k = Nil
+    Del (TPar (k, y) :- xs)  k = xs
+    Del (TPar (t, y) :- xs)  k = TPar (t, y) :- Del xs k
 
 -- membership
-type family Member (xs :: [(Symbol, *)]) (s :: Symbol) :: Bool where
-    Member Nil                  s = False
-    Member (TPar(s, x) :- xs)   s = True
-    Member (TPar(t, x) :- xs)   s = Member xs s
+type family Member (xs :: [(Symbol, *)]) (k :: Symbol) :: Bool where
+    Member Nil                  k = False
+    Member (TPar(k, x) :- xs)   k = True
+    Member (TPar(t, x) :- xs)   k = Member xs k
 \end{spec}
 \caption{Some operations on type-level dictionaries.}
 \label{fig:dict-operations}

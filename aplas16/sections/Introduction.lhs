@@ -9,11 +9,13 @@
 string, a list of strings, a set of strings, or a hash table of strings, etc.
 However, string is the only primitive datatype. Numbers, for example, have to be
 serialized to strings before being saved in the data store, and parsed back to
-numbers to be manipulated with.
+numbers to be manipulated with. While the concept is simple, \Redis{} is used
+as an essential component in a number of popular, matured service, including
+Twitter, GitHub, Weibo, StackOverflow, and Flickr, etc.
 
 For an example, consider the following sequence of commands, entered through the interactive interface of \Redis{}. The keys \texttt{some-set} and
-\texttt{another-set} are both associated to a set of strings. The two call to
-command \texttt{SADD} respectively adds three and two values to the two sets,
+\texttt{another-set} are both assigned a set of strings. The two call to
+command \texttt{SADD} respectively adds three and two strings to the two sets,
 before \texttt{SINTER} takes their intersection:
 \begin{Verbatim}[xleftmargin=.4in]
 redis> SADD some-set a b c
@@ -30,8 +32,12 @@ redis> SINTER some-set another-set
 Many third party libraries provide interfaces for general purpose programming
 languages to access \Redis{} through its TCP protocol. For Haskell, the most
 popular library is
-\Hedis{}\footnote{\url{https://hackage.haskell.org/package/hedis}}.
-The following program implements the previous example:
+\Hedis{}.\footnote{\url{https://hackage.haskell.org/package/hedis}}
+A (normal) \Redis{} computation returning a value of type |a| is represented in
+Haskell by |Redis (Either Reply a)|, where the type |Redis| is a monad, while
+|Either Reply a| indicates that the computation either returns a value of type
+|a|, or fails with an error message |Reply|, a representation of replies
+from the \Redis{} server. The following program implements the previous example:
 \begin{spec}
 program :: Redis (Either Reply [ByteString])
 program = do
@@ -39,23 +45,16 @@ program = do
     sadd "another-set" ["a", "b", "c"]
     sinter ["some-set", "another-set"] {-"~~."-}
 \end{spec}
-The function |sadd :: ByteString -> [ByteString] -> Redis (Either Reply Integer)| takes a key and a list of values as arguments, and returns
-an |Integer| on success, or returns a |Reply|, a low-level representation of
-replies from the \Redis{} server, in case of failures, all wrapped in the monad
-|Redis|, the context of command execution.\footnotemark~
-Keys and values, being nothing but binary strings in \Redis{}, are
-represented using Haskell |ByteString|.
-%Values of other types must be encoded
-%as |ByteString|s before being written to the database, and decoded after being
-%read back.
+The function |sadd :: ByteString -> [ByteString] -> Redis (Either Reply Integer)| takes a key and a list of values as arguments, and returns a
+\Redis{} computation yielding |Integer|. Keys and values, being nothing but
+binary strings in \Redis{}, are represented using Haskell |ByteString|.
 
-\footnotetext{\Hedis{} provides another kind of context, |RedisTx|, for
-\emph{transactions}, united with |Redis| under the class |RedisCtx|. We
-demonstrate only |Redis| in this paper.}
+% \footnotetext{\Hedis{} provides another kind of context, |RedisTx|, for
+% \emph{transactions}. We focus on |Redis| in this paper.}
 
 \paragraph{The Problems} Most commands only works with data of certain types. In
-the following example, the key \texttt{some-string} is associated to string
-\texttt{foo} --- the command \texttt{SET} always associates a key to a string.
+the following example, the key \texttt{some-string} is assigned a string
+\texttt{foo} --- the command \texttt{SET} always assigns a string to a key.
 The subsequent call to \texttt{SADD}, which adds a value to a set, thus causes a runtime error.
 \begin{Verbatim}[xleftmargin=.4in]
 redis> SET some-string foo
@@ -71,7 +70,7 @@ incrementation, stores a string back. If the string can not be parse as an
 integer, a runtime error is raised.
 
 The reader must have noticed the peculiar pattern of value creation and update
-in \Redis{}: the same command is used both to create a key-value pair and
+in \Redis{}: the same command is used both to create a key-value pair and to
 update them. Similar to \texttt{SADD}, the command \texttt{LPUSH} appends a
 value (a string) to a list, or creates one if the key does not exist:
 \begin{Verbatim}[xleftmargin=.4in]
@@ -89,7 +88,7 @@ redis> LLEN some-string
 (error) WRONGTYPE Operation against a key holding
 the wrong kind of value
 \end{Verbatim}
-\noindent Curiously, however, when applied to a key not is not created yet,
+\noindent Curiously, however, when applied to a key not yet created,
 \Redis{} designers chose to let \texttt{LLEN} return \texttt{0}:
 \begin{Verbatim}[xleftmargin=.4in]
 redis> LLEN nonexistent
@@ -115,7 +114,7 @@ better documentation. We wish to be sure that a program calling \texttt{INCR},
 for example, can be type checked only if we can statically guarantee that the
 value to be accessed is indeed an integer. We wish to see from the type of
 operators such as \texttt{LLEN} when it can be called, and allow it to be used
-only contexts that are safe. We may even want to explicitly declare existence
+only in contexts that are safe. We may even want to explicitly declare existence
 of certain keys in the data store and, when we are done with them, renounce them
 to prevent further access, as well as preventing possible errors.
 
@@ -137,17 +136,30 @@ to prevent further access, as well as preventing possible errors.
 This paper discusses the techniques we used and experiences we learned from building such a language, nicknamed \Edis{}. We constructed an {\em indexed
 monad}, on top of the monad |Redis|, which is indexed by a dictionary that
 maintains the set of currently defined keys and their types. To represent
-the dictionary, we need to encode variable binds with {\em type-level} lists
+the dictionary, we need to encode variable bindings with {\em type-level} lists
 and strings. And to manipulate the dictionary, we applied various type-level
 programming techniques. To summarize our contributions:
 \begin{itemize}
-\item We present \Edis{}, a statically typed domain-specific language embedded in Haskell and built on \Hedis{}.
-% also makes Redis polymorphic by automatically converting back and forth from values of arbitrary types and boring ByteStrings.
+\item We present \Edis{}, a statically typed domain-specific language embedded in Haskell and built on \Hedis{}. Serializable Haskell datatypes are
+automatically converted before being written to \Redis{} data store. Available
+keys and their types are kept track of in type-level dictionaries. The types of
+embedded commands state clearly their preconditions and postconditions on the
+available keys and types, and a program is allowed to be constructed only if
+it is guaranteed not to fail with a type error.
 %
-\item We demonstrate how to model variable bindings of an embedded DSL using
- language extensions including type-level literals and data kinds.
+\item We demonstrate the use of various type-level programming techniques,
+including data kinds, singleton types and proxies, closed type families, to
+define type-level lists and operation that observes and manipulates the lists.
 %
-\item We provide (yet another) example of encoding effects and constraints of
-in types, with indexed monad~\cite{indexedmonad}, closed type-families~\cite{closedtypefamilies} and constraints kinds~\cite{constraintskinds}.
+\item This is (yet another) example of encoding effects and constraints of programs in types, using indexed monad and constraint kinds.
+%\cite{indexedmonad}, closed type-families~\cite{closedtypefamilies} and constraints kinds~\cite{constraintskinds}.
 \end{itemize}
-\todo{Phrase this better.}
+
+In Section~\ref{sec:indexed-monads} we introduce indexed monads, to reason about
+pre and postconditions of stateful programs, and in Section~\ref{sec:type-level-dict} we review the basics of type-level
+programming in Haskell that allows us to build type-level dictionaries to keep
+track of keys and types. Embeddings of \Redis{} commands are presented in
+Section~\ref{sec:embedding-commands}. In Section~\ref{sec:discussions} we
+discuss various issues regarding design choices, limitations of this approach,
+as well as possible future works, before we review related work in
+Section~\ref{sec:conclusions}.

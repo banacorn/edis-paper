@@ -30,7 +30,6 @@ lifts a pure computation to a stateful computation that does not alter the
 state. In |x `bind` f|, a computation |x :: m p q a| is followed by
 |f :: a -> m q r b| --- the postcondition of |x| matches the precondition of
 the computation returned by |f|. The result is a monad |m p r b|.
-Indexed monads have been used ~\cite{typefun,staticresources} ... \todo{for what? Some descriptions here to properly cite them.}
 
 We define a new indexed monad |Edis|. At term level, the |unit| and |bind|
 methods are not interesting: they merely make calls to |return| and |(>>=)| of
@@ -45,19 +44,24 @@ instance IMonad Edis where
     bind m f = Edis (unEdis m >>= unEdis . f ) {-"~~."-}
 \end{spec}
 
-The properties of the state we care about are the set of currently allocated
-keys and their associated types. We will present, in Section~\ref{sec:type-level-dict}, techniques that allow us to specify
+The properties of the state we care about are the set of currently
+allocated keys and types of their values. We will present, in Section~\ref{sec:type-level-dict}, techniques that allow us to specify
 properties such as ``the keys in the database are |"A"|, |"B"|, and |"C"|,
-respectively associated to values of type |Int|, |Char|, and |Bool|.''
-For now, however, let us look at the simplest \Redis{} command.
+respectively assigned values of type |Int|, |Char|, and |Bool|.'' For now,
+however, let us look at the simplest \Redis{} command.
 
-The command \texttt{PING} in \Redis{} does nothing but replies a message
+\Redis{} commands can be executed in two contexts: normal, and in a \emph{transaction}. In \Hedis{}, a commands yielding value of type |a| in the
+normal case is represented by |Redis (Either Reply a)|, as mentioned in
+Section~\ref{sec:introduction}; in a transaction, the command is represented by
+two other datatypes |RedisTx (Queued a)|. In this paper we focus on the former
+case. For brevity we abbreviate |Either Reply a| to |EitherReply a|.
+
+The command \texttt{PING} in \Redis{} does nothing but replying a message
 \texttt{PONG} if the connection is alive. In \Hedis{}, |ping| has type
-|Redis (Either Reply Status)|. The \Edis{} version of |ping| simply
-applys an additional constructor (functions from \Hedis{} are qualified with
-|Hedis| to prevent name clashing):
+|Redis (EitherReply Status)|. The \Edis{} version of |ping| simply applys an additional constructor (functions from \Hedis{} are qualified with |Hedis| to
+prevent name clashing):
 \begin{spec}
-ping :: Edis xs xs (Either Reply Status)
+ping :: Edis xs xs (EitherReply Status)
 ping = Edis Hedis.ping {-"~~."-}
 \end{spec}
 Since |ping| does not alter the database, the postcondition and precondition

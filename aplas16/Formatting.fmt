@@ -42,7 +42,10 @@
 %format CloseTPar = "\!)"
 %format (TPar (xs)) = "\mbox{\textquotesingle}(" xs ")"
 %format (TList (xs)) = "\mbox{\textquotesingle}[" xs "]"
+%format EitherReply (t) = "\Conid{R} \uplus " t
 
+%format k1
+%format k2
 \makeatother
 \EndFmtInput
 %endif
