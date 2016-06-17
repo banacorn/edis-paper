@@ -17,7 +17,7 @@ monad with its pre and postcondition. An \emph{indexed monad}~%
 \cite{indexedmonad} (also called \emph{parameterised monad} or \emph{monadish})
 is a monad that, in addition to the type of value it computes, takes two more
 type arguments representing an initial state and a final state, to be
-interpreted like a Hoare triple~\cite{kleisli}:
+interpreted like a Hoare triple:
 \begin{spec}
 class IMonad m where
     unit :: a -> m p p a

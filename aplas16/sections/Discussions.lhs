@@ -55,13 +55,13 @@ specify that all the keys are in the class |KnownSymbol|. This is possible --
 we may define a datatype, indexed by the keys, serving as a witness that they
 are all in |KnownSymbol|. We currently have not implemented such feature and
 leave it as a possible future work. For now, we offer commands that take fixed
-numbers of inputs. The \Edis{} counter part of |sinter| is:
+numbers of inputs. The \Edis{} version of |sinter| has type:
 \begin{spec}
-sinter  :: (  KnownSymbol k1, KnownSymbol k2, Serialize a,
-              JUST (SetOf a) ~ Get xs k1, SetOrNX xs k2)
-        => Proxy k1 -> Proxy k2 -> Edis xs xs (EitherReply [a]) {-"~~."-}
+sinter ::  (  KnownSymbol k1, KnownSymbol k2, Serialize a,
+              Just (SetOf x) ~ Get xs k1,
+              Just (SetOf x) ~ Get xs k2)
+           => Proxy k1 -> Proxy k2 -> Edis xs xs (EitherReply [a]) {-"~~."-}
 \end{spec}
-\todo{Is this right? Should we be sure that |k2| has type |SetOf a|?}
 
 The function |hgetall| in \Hedis{} implements the \Redis{} command \texttt{HGETALL} and has the following type:
 \begin{spec}
@@ -80,7 +80,10 @@ actually throw a type error. We demand that elements in our lists must be
 of the same type, for example, while a \Redis{} program could store in a list
 different types of data, encoded as strings, and still works well.
 
-\todo{no dynamic generation of keys}
+One innate limitation is that we cannot allow dynamic generation of keys. In
+\Hedis{}, the Haskell program is free to generate arbitrary sequence of keys
+to be used in the data store, which is in general not possible due to the
+static nature of \Redis{}.
 
 \paragraph{Transactions.} Commands in \Redis{} can be wrapped in
 \emph{transactions}. \Redis{} offers two promises regarding commands in a

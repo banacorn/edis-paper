@@ -151,8 +151,8 @@ it is guaranteed not to fail with a type error.
 including data kinds, singleton types and proxies, closed type families, to
 define type-level lists and operation that observes and manipulates the lists.
 %
-\item This is (yet another) example of encoding effects and constraints of programs in types, using indexed monad and constraint kinds.
-%\cite{indexedmonad}, closed type-families~\cite{closedtypefamilies} and constraints kinds~\cite{constraintskinds}.
+\item This is (yet another) example of encoding effects and constraints of programs in types, using indexed monad~\cite{indexedmonad}, closed
+type-families~\cite{tfclosed} and constraint kinds~\cite{constraintskinds}.
 \end{itemize}
 
 In Section~\ref{sec:indexed-monads} we introduce indexed monads, to reason about

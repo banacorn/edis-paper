@@ -20,7 +20,8 @@ ported these techniques to Haskell using singleton types.
 
 None of the type-level programming techniques we used in this paper are
 particularly new. Indexed monads (also called parameterized monads) have been
-introduced by Atkey~\cite{indexedmonad}.
+introduced by Atkey~\cite{indexedmonad}. McBride~\cite{kleisli} showed how to
+construct indexed free-monads from Hoare Logic specifications.
 Kiselyov et al~\cite{typefun} used indexed monads to track the locks held among
 a given finite set. The same paper also demonstrated implementation of a
 variety of features including memoization, generic maps, session types, typed \texttt{printf} and \texttt{sprintf}, etc., by type-level programming.
@@ -28,7 +29,8 @@ Before the introduction of type families, Kiselyov and Shan~\cite{staticresource
 implement type-level functions, and showed that they are sufficient to track
 resources in device drivers.
 
-\cite{constraintskinds}
+% \cite{constraintskinds}
 
-Lindley and McBride~\cite{phasedistinction} provided a good tutorial, analysis, and summary of the dependent type like features currently in Haskell, and
-compared them with ``real'' dependently typed languages.
+Lindley and McBride~\cite{phasedistinction} provided a through analysis and summary of the dependent-type-like features currently in Haskell, and
+compared them with dependently typed languages without phase distinction, such as Agda. It turns out that GHC's constraint solver work surprisingly well as a theorem
+prover.

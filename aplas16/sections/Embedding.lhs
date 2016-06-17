@@ -160,11 +160,11 @@ type family IsString (t :: *) :: Bool where
     IsString t             = FALSE
 
 type ListOrNX    xs k =
-  (IsList    (FromJust (Get xs k)) || Not (Member xs k)) ~ TRUE
+  (IsList    (FromJust (Get xs k)) `Or` Not (Member xs k)) ~ TRUE
 type SetOrNX     xs k =
-  (IsSet     (FromJust (Get xs k)) || Not (Member xs k)) ~ TRUE
+  (IsSet     (FromJust (Get xs k)) `Or` Not (Member xs k)) ~ TRUE
 type StringOrNX  xs k =
-  (IsString  (FromJust (Get xs k)) || Not (Member xs k)) ~ TRUE
+  (IsString  (FromJust (Get xs k)) `Or` Not (Member xs k)) ~ TRUE
 \end{spec}
 \caption{The ``well-typed, or non-existent'' constraints.}
 \label{fig:xxxOrNX}
@@ -224,36 +224,62 @@ start = Edis $ return () {-"~~."-}
 
 \subsection{A Larger Example}
 
-We present a larger example as a
-The following program increases the value of |"A"| as an integer, push the result of the increment to list |"L"|, and then pops it out:
+As a summary, we present a larger example. The following main program build
+a connection with the \Redis{} server, runs an embedded program |prog|, and
+prints the result:
 \begin{spec}
 main :: IO ()
 main = do
     conn    <- connect defaultConnectInfo
-    result  <- runRedis conn $ unEdis $ start
-        `bind` \ _ ->  declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
-        `bind` \ _ ->  incr (Proxy :: Proxy "A")
-        `bind` \n ->  case n of
-            Left  err  -> lpush (Proxy :: Proxy "L") 0
-            Right n    -> lpush (Proxy :: Proxy "L") n
-        `bind` \ _ ->  lpop     (Proxy :: Proxy "L")
-    print result
+    result  <- runRedis conn $ unEdis $ prog
+    print result {-"~~."-}
 \end{spec}
-
-The syntax is pretty heavy, like the old days when there's no
- \emph{do-notation}\cite{history}. But if we don't need any variable bindings
- between operations, we could compose these commands with a sequencing operator
- |(>>>)|.
-
+The embedded program |prog| increases the value of |"A"| as an integer, push the incremented value to list |"L"|, and then pops it out:
+\begin{spec}
+prog :: Edis NIL (TList (TPar ("A", StringOf Integer), TPar ("L", ListOf Integer))) Integer
+prog =  start
+        >>>     declare kA tInteger
+        >>>     incr kA
+        `bind`  \ n -> case n of
+                   Left err  -> lpush kL 0
+                   Right n   -> lpush kL n
+        >>>     lpop kL
+  where  (kA, kL, tInteger) =
+          (Proxy :: Proxy "A", Proxy :: Proxy "L", Proxy :: Proxy Integer) {-"~~."-}
+\end{spec}
+The sequencing operator |(>>>)| is defined by:
 \begin{spec}
 (>>>) :: IMonad m => m p q a -> m q r b -> m p r b
+m1 >>> m2 = m1 `bind` (const m2) {-"~~."-}
 \end{spec}
-\begin{spec}
-program = start
-    >>> declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
-    >>> incr    (Proxy :: Proxy "A")
-    >>> lpush   (Proxy :: Proxy "L") 0
-    >>> lpop    (Proxy :: Proxy "L")
-\end{spec}
+
+% The following program increases the value of |"A"| as an integer, push the result of the increment to list |"L"|, and then pops it out:
+% \begin{spec}
+% main :: IO ()
+% main = do
+%     conn    <- connect defaultConnectInfo
+%     result  <- runRedis conn $ unEdis $ start
+%         `bind` \ _ ->  declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
+%         `bind` \ _ ->  incr (Proxy :: Proxy "A")
+%         `bind` \n ->  case n of
+%             Left  err  -> lpush (Proxy :: Proxy "L") 0
+%             Right n    -> lpush (Proxy :: Proxy "L") n
+%         `bind` \ _ ->  lpop     (Proxy :: Proxy "L")
+%     print result
+% \end{spec}
+
+% The syntax is pretty heavy, like the old days when there's no
+%  \emph{do-notation}\cite{history}. But if we don't need any variable bindings
+%  between operations, we could compose these commands with a sequencing operator
+%  |(>>>)|.
+
+
+% \begin{spec}
+% program = start
+%     >>> declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
+%     >>> incr    (Proxy :: Proxy "A")
+%     >>> lpush   (Proxy :: Proxy "L") 0
+%     >>> lpop    (Proxy :: Proxy "L")
+% \end{spec}
 
 \todo{Give a more interesting example?}

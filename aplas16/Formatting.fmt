@@ -46,6 +46,9 @@
 
 %format k1
 %format k2
+%format m1
+%format m2
+%format >>> = "\mathbin{>\!\!\!>\!\!\!>}"
 \makeatother
 \EndFmtInput
 %endif
