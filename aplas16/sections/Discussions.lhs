@@ -75,7 +75,7 @@ also leave such functions as a future work.
 \paragraph{Not All Safe Redis Programs Can Be Typechecked.}
 Enforcing a typing discipline rules out some programs that are likely to be erroneous, and reduces the number of programs that are allowed. Like all type
 systems, our type system takes a conservative estimation: there are bound to be
-some \Redis{} programs not are not typable in our type system, but do not
+some \Redis{} programs that are not typable in our type system, but do not
 actually throw a type error. We demand that elements in our lists must be
 of the same type, for example, while a \Redis{} program could store in a list
 different types of data, encoded as strings, and still works well.

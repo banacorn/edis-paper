@@ -80,7 +80,7 @@ decode  :: Serialize a => ByteString -> Either String a {-"~~."-}
 
 As mentioned before, while \Redis{} provide a number of container types
 including lists, sets, and hash, etc., the primitive type is string.
-\Hedis{} programmers manually convert other types of data to strings before
+\Hedis{} programmers manually convert data of other types to strings before
 saving them into the data store. In \Edis{}, we wish to save some of the
 effort for the programmers, as well as keeping a careful record of the intended
 types of the strings in the data store.
@@ -111,8 +111,9 @@ this entry is added; otherwise the old type of |"A"| is updated to
 |StringOf Bool|.
 
 \Redis{} command \texttt{INCR} reads the (string) value of the given key, parse
-it as an integer, and increments it, before storing it back. The command
-\texttt{INCRBYFLOAT} increments a floating number, assigned to |key|. They are defined in \Edis{} below:
+it as an integer, and increments it by one, before storing it back. The command
+\texttt{INCRBYFLOAT} increments the floating point value of a key by a given
+amount. They are defined in \Edis{} below:
 \begin{spec}
 incr  :: (KnownSymbol k, Get xs k ~ Just (StringOf Integer))
       => Proxy k -> Edis xs xs (EitherReply Integer)
@@ -142,7 +143,7 @@ harder, thanks to our type-level functions. We may thus write the predicate as:
 \begin{spec}
 Get xs k ~ Just (ListOf a) `Or` Not (Member xs k) {-"~~."-}
 \end{spec}
-To avoid referring to |a|, which might not exist, we define an auxiliary predicate |IsList :: Maybe * -> Bool| such that |IsList t| reduces to |TRUE|
+To avoid referring to |a|, which might not exist, we define an auxiliary predicate |IsList :: * -> Bool| such that |IsList t| reduces to |TRUE|
 only if |t = ListOf a|. As many \Redis{} commands are invokable only under such
 ``well-typed, or non-existent'' precondition, we give names to such constraints,
 as seen in Figure~\ref{fig:xxxOrNX}.
@@ -158,6 +159,9 @@ type family IsSet (t :: *) :: Bool where
 type family IsString (t :: *) :: Bool where
     IsString (StringOf a)  = TRUE
     IsString t             = FALSE
+
+type family FromJust (x :: Maybe k) :: k where
+    FromJust (JUST k) = k
 
 type ListOrNX    xs k =
   (IsList    (FromJust (Get xs k)) `Or` Not (Member xs k)) ~ TRUE
@@ -184,7 +188,7 @@ Similarly, the type of |sadd|, a function we have talked about a lot,
 is given below:
 \begin{spec}
 sadd  :: (KnownSymbol k, Serialize a, SetOrNX xs k)
-      => Proxy k -> Edis xs (Set xs k (SetOf a)) (EitherReply Integer)
+      => Proxy k -> a -> Edis xs (Set xs k (SetOf a)) (EitherReply Integer)
 sadd key val = Edis $ Redis.sadd (encodeKey key) [encode val] {-"~~,"-}
 \end{spec}
 
