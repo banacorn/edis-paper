@@ -10,7 +10,7 @@ string, a list of strings, a set of strings, or a hash table of strings, etc.
 However, string is the only primitive datatype. Numbers, for example, have to be
 serialized to strings before being saved in the data store, and parsed back to
 numbers to be manipulated with. While the concept is simple, \Redis{} is used
-as an essential component in a number of popular, matured service, including
+as an essential component in a number of popular, matured services, including
 Twitter, GitHub, Weibo, StackOverflow, and Flickr, etc.
 
 For an example, consider the following sequence of commands, entered through the interactive interface of \Redis{}. The keys \texttt{some-set} and
@@ -27,7 +27,7 @@ redis> SINTER some-set another-set
 2) "b"
 \end{Verbatim}
 \noindent Notice that the keys \texttt{some-set} and \texttt{another-set}, if not existing before the call to \texttt{SADD}, are created on site. The calls to
-\texttt{SADD} return the size of the resulting set.
+\texttt{SADD} return the sizes of the resulting sets.
 
 Many third party libraries provide interfaces for general purpose programming
 languages to access \Redis{} through its TCP protocol. For Haskell, the most
@@ -64,12 +64,12 @@ redis> SADD some-string bar
 the wrong kind of value
 \end{Verbatim}
 \noindent For another source of type error, the command \texttt{INCR key}
-incrementa the value associated to \texttt{key} by one. With strings being the
+increments the value associated to \texttt{key} by one. With strings being the
 only primitive type, \Redis{} parses the stored string to an integer and, after
 incrementation, stores a string back. If the string can not be parse as an
 integer, a runtime error is raised.
 
-The reader must have noticed the peculiar pattern of value creation and update
+The reader must have noticed the peculiar pattern of value creation and updating
 in \Redis{}: the same command is used both to create a key-value pair and to
 update them. Similar to \texttt{SADD}, the command \texttt{LPUSH} appends a
 value (a string) to a list, or creates one if the key does not exist:
@@ -88,17 +88,17 @@ redis> LLEN some-string
 (error) WRONGTYPE Operation against a key holding
 the wrong kind of value
 \end{Verbatim}
-\noindent Curiously, however, when applied to a key not yet created,
-\Redis{} designers chose to let \texttt{LLEN} return \texttt{0}:
+\noindent Curiously, however, when applied to a key not yet created, \Redis{}
+designers chose to let \texttt{LLEN} return \texttt{0}:
 \begin{Verbatim}[xleftmargin=.4in]
 redis> LLEN nonexistent
 (integer) 0
 \end{Verbatim}
 
 Being a simple wrapper on top of the TCP protocol of \Redis{}, \Hedis{}
-inherits all the behaviors. Executing following program yields the same error
-wrapped in Haskell: |Left (Error| \texttt{"WRONGTYPE Operation against a
-key holding the wrong kind of value"}|)|.
+inherits all the behaviors. Executing the following program yields the same
+error, but wrapped in a Haskell constructor: |Left (Error| \texttt{"WRONGTYPE
+Operation against a key holding the wrong kind of value"}|)|.
 \begin{spec}
 program :: Redis (Either Reply Integer)
 program = do
@@ -110,28 +110,12 @@ Such a programming model is certainly very error-prone. Working within Haskell,
 a host language with a strong typing system, one naturally wishes to build a
 domain-specific embedded language (DSEL) that exploits the rich type system
 of Haskell to not only ensure absence of \Redis{} type errors, but also provides
-better documentation. We wish to be sure that a program calling \texttt{INCR},
+better documentations. We wish to be sure that a program calling \texttt{INCR},
 for example, can be type checked only if we can statically guarantee that the
 value to be accessed is indeed an integer. We wish to see from the type of
 operators such as \texttt{LLEN} when it can be called, and allow it to be used
-only in contexts that are safe. We may even want to explicitly declare existence
-of certain keys in the data store and, when we are done with them, renounce them
-to prevent further access, as well as preventing possible errors.
-
-% \paragraph{The Cause} Every key is associated with a value, and every value has
-% its own type. But most commands in \Redis{} only work with a certain type of
-%  value. When a command is used on a wrong type of key, a runtime error occurs.
-%  The problems illustrated above arise from the absence of type checking, with
-%  respects to \textbf{the type of a value that associates with a key}.
-%  These problems could have been avoided, if we could know the type every key
-%  associates with in advance, and prevent programs with invalid commands from
-%  executing.
-%
-% \paragraph{Hedis as an embedded DSL}
-% Haskell makes it easy to build and use {\em domain specific embedded languages} (DSELs), and \Hedis{} can be regarded as one of them. What makes \Hedis{} peculiar is that,
-%  it has \emph{variable bindings} (between keys and values), but with very
-%  little or no semantic checking, neither dynamically nor statically.
-%
+only in contexts that are safe. We may even want to explicitly declare a fresh
+key and its type, to prevent it from unexpectedly being used as some other type.
 
 This paper discusses the techniques we used and experiences we learned from building such a language, nicknamed \Edis{}. We constructed an {\em indexed
 monad}, on top of the monad |Redis|, which is indexed by a dictionary that

@@ -15,7 +15,7 @@ In Haskell, stateful computations are represented by monads. In order to
 reason about their behaviors within the type system, we wish to label a state
 monad with its pre and postcondition. An \emph{indexed monad}~%
 \cite{indexedmonad} (also called \emph{parameterised monad} or \emph{monadish})
-is a monad that, in addition to the type of value it computes, takes two more
+is a monad that, in addition to the type of its result, takes two more
 type arguments representing an initial state and a final state, to be
 interpreted like a Hoare triple:
 \begin{spec}
@@ -50,7 +50,7 @@ properties such as ``the keys in the database are |"A"|, |"B"|, and |"C"|,
 respectively assigned values of type |Int|, |Char|, and |Bool|.'' For now,
 however, let us look at the simplest \Redis{} command.
 
-\Redis{} commands can be executed in two contexts: normal, and in a \emph{transaction}. In \Hedis{}, a commands yielding value of type |a| in the
+\Redis{} commands can be executed in two contexts: normal, and in a \emph{transaction}. In \Hedis{}, a command yielding value of type |a| in the
 normal case is represented by |Redis (Either Reply a)|, as mentioned in
 Section~\ref{sec:introduction}; in a transaction, the command is represented by
 two other datatypes |RedisTx (Queued a)|. In this paper we focus on the former

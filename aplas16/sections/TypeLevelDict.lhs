@@ -9,10 +9,10 @@ One of the challenges of statically ensuring type correctness of stateful
 languages is that the type of the value of a key can be altered by updating.
 In \Redis{}, one may delete an existing key and create it again by assigning to
 it a value of a different type. To ensure type correctness, we keep track of the
-types of all existing keys in a {\em dictionary} --- conceptually, an associate list, or a list of pairs of keys and some encoding of types. For example, we may want the dictionary |[("A",Int), ("B", Char), ("C", Bool)]| to represent a
+types of all existing keys in a {\em dictionary} --- an associate list, or a list of pairs of keys and some encoding of types. For example, we may use the dictionary |[("A",Int), ("B", Char), ("C", Bool)]| to represent a
 predicate, or a constraint, stating that ``the keys in the data store are |"A"|,
 |"B"|, and |"C"|, respectively assigned values of type |Int|, |Char|, and
-|Bool|.''
+|Bool|.'' (This representation will be refined in the next section.)
 
 The dictionary above mixes values (strings such as |"A"|, |"B"|) and types.
 Further more, as mentioned in Section~\ref{sec:indexed-monads}, the
@@ -29,8 +29,8 @@ used with the indexed monad in Section~\ref{sec:indexed-monads}.
 Haskell maintains the distinction between values, types, and kinds: values are
 categorized by types, and types are categorized by kinds. The kinds are
 relatively simple: |*| is the kind of all {\em lifted} types, while type
-constructors have kinds such as |* -> *|, or |* -> * -> *|, etc. Consider the
-datatype definitions below:
+constructors have kinds such as |* -> *|, or |* -> * -> *|, etc.\footnotemark\,
+Consider the datatype definitions below:
 \begin{spec}
 data Nat = Zero | Suc Nat {-"~~,\qquad"-} data [a] = [] | a : [a] {-"~~."-}
 \end{spec}
@@ -40,6 +40,10 @@ side is how Haskell lists are understood. The {\em kind} of |[.]| is |* -> *|,
 since it takes a lifted type |a| to a lifted type |[a]|. The two value
 constructors respectively have types |[] :: [a]| and |(:) :: a -> [a] ->
 [a]|, for all type |a|.
+
+\footnotetext{In Haskell, the opposite of \emph{lifted} types are \emph{unboxed}
+types, which are not represented by a pointer to a heap object, and cannot be
+stored in a polymorphic data type.}
 
 The GHC extension \emph{data kinds}~\cite{promotion}, however, automatically
 promotes certain ``suitable'' types to kinds.\footnote{It is only informally
@@ -53,8 +57,8 @@ constructor with a single quote, such as in |ZERO| and |SUC|, denotes that it
 is promoted.
 
 The situation of lists is similar: for all kind |k|, |[k]| is also a kind. For
-all kind |k|, |[]| is a type of kind |[k]|. Given a type |x| of kind |k| and a
-type |xs| of kind |[k]|, |x : xs| is again a type of kind |[k]|. Formally,
+all kind |k|, |[]| is a type of kind |[k]|. Given a type |a| of kind |k| and a
+type |as| of kind |[k]|, |a : as| is again a type of kind |[k]|. Formally,
 |(:) :: k -> [k] -> [k]|. For example, |Int :- (Char :- (Bool :- NIL))| is a
 type having kind |[*]| --- it is a list of (lifted) types. The optional quote
 denotes that the constructors are promoted. The same list can be denoted by a
@@ -96,15 +100,15 @@ counterpart:\\
 \begin{minipage}[b]{0.35\linewidth}
 \begin{spec}
 (||) :: Bool -> Bool -> Bool
-True  &&  b  = True
-a     &&  b  = b {-"~~,"-}
+True  ||  b  = True
+a     ||  b  = b {-"~~,"-}
 \end{spec}
 \end{minipage}
 \begin{minipage}[b]{0.55\linewidth}
 \begin{spec}
 type family Or (a :: Bool) (b :: Bool) :: Bool
-  where  True || b  = True
-         a    || b  = b {-"~~."-}
+  where  TRUE  `Or` b  = TRUE
+         a     `Or` b  = b {-"~~."-}
 \end{spec}
 \end{minipage}
 }\\
@@ -112,7 +116,7 @@ The lefthand side is a typical definition of |(||||)| by pattern matching.
 On the righthand side, |Bool| is not a type, but a type lifted to a kind,
 while |True| and |False| are types of kind |Bool|. The declaration says that
 |Or| is a family of types, indexed by two parameters |a| and |b| of kind |Bool|.
-The type with index |True| and |b| is |True|, and all other indices lead to |b|.
+The type with index |TRUE| and |b| is |TRUE|, and all other indices lead to |b|.
 For our purpose, we can read |Or| as a function from types to types ---
 observe how it resembles the term-level |(||||)|. We present two more type-level
 functions about |Bool| --- negation, and conditional, that we will use later:\\
@@ -137,14 +141,13 @@ As a remark, type families in Haskell come in many flavors. One can define famil
 inside type classes~\cite{tfclass,tfsynonym} or at toplevel. Top-level type families can be open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we
 chose is top-level, closed type synonym family, since it allows overlapping
 instances, and since we need none of the extensibility provided by open type
-families. Notice that the instance |Or True b| could be subsumed under the more
-general instance, |Or a b|. In a closed type family we may resolve the overlapping in order, just like how cases overlapping is resolved in term-level
+families. Notice that the instance |TRUE `Or` b| could be subsumed under the
+more general instance, |a `Or` b|. In a closed type family we may resolve the
+overlapping in order, just like how cases overlapping is resolved in term-level
 functions.
 
-%\subsection{Functions on Type-Level Dictionaries}
-
 We are now able to define operations on type-level dictionaries. Let's begin
-with dictionary lookup.
+with dictionary lookup:
 \begin{spec}
 type family Get (xs :: [(Symbol, *)]) (k :: Symbol) :: * where
     Get (TPar (k, x) :- xs) k  =  x
@@ -157,14 +160,14 @@ a partial function on types: while |Get (TList (TPar ("A", Int))) "A"| evaluates
 to |Int|, when |Get (TList (TPar ("A", Int))) "B"| appears in a type expression,
 there are no applicable rules to reduce it. The expression thus stays as it is.
 
-For our applications it is more convenient to make |Get| total, as we would at
-the term level, by having it return a |Maybe|:
-\begin{spec}
-type family Get (xs :: [(Symbol, *)]) (k :: Symbol) :: Maybe * where
-    Get NIL                 k = Nothing
-    Get (TPar(k, x) :- xs)  k = Just x
-    Get (TPar(t, x) :- xs)  k = Get xs k {-"~~."-}
-\end{spec}
+% For our applications it is more convenient to make |Get| total, as we would at
+% the term level, by having it return a |Maybe|:
+% \begin{spec}
+% type family Get (xs :: [(Symbol, *)]) (k :: Symbol) :: Maybe * where
+%     Get NIL                 k = Nothing
+%     Get (TPar(k, x) :- xs)  k = Just x
+%     Get (TPar(t, x) :- xs)  k = Get xs k {-"~~."-}
+% \end{spec}
 %
 Some other dictionary-related functions are defined in a similar fashion
 in Figure \ref{fig:dict-operations}. The function |Set| either updates an
