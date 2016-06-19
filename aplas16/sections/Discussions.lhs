@@ -32,7 +32,7 @@ only to make |a| explicit.
 We think it is more reasonable to enforce that, when |get| is called, the key
 should exist in the data store. Thus |get| in \Redis{} has the following type:
 \begin{spec}
-get  :: (KnownSymbol k, Serialize a, Just (StringOf a) ~ Get xs k)
+get  :: (KnownSymbol k, Serialize a, StringOf a ~ Get xs k)
      => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~,"-}
 \end{spec}
 which requires that |(k,a)| presents in |xs| and thus |a| is inferrable from
@@ -58,8 +58,7 @@ leave it as a possible future work. For now, we offer commands that take fixed
 numbers of inputs. The \Edis{} version of |sinter| has type:
 \begin{spec}
 sinter ::  (  KnownSymbol k1, KnownSymbol k2, Serialize a,
-              Just (SetOf x) ~ Get xs k1,
-              Just (SetOf x) ~ Get xs k2)
+              SetOf x ~ Get xs k1, SetOf x ~ Get xs k2)
            => Proxy k1 -> Proxy k2 -> Edis xs xs (EitherReply [a]) {-"~~."-}
 \end{spec}
 
