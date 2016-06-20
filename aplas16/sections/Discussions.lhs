@@ -85,7 +85,7 @@ different types of data, encoded as strings, and still works well.
 One innate limitation is that we cannot allow dynamic generation of keys. In
 \Hedis{}, the Haskell program is free to generate arbitrary sequence of keys
 to be used in the data store, which is in general not possible due to the
-static nature of \Redis{}.
+static nature of \Edis{}.
 
 \paragraph{Transactions.} Commands in \Redis{} can be wrapped in
 \emph{transactions}. \Redis{} offers two promises regarding commands in a
