@@ -309,34 +309,74 @@ start = Edis (return ()) {-"~~."-}
 
 \subsection{A Larger Example}
 
-As a summary, we present a larger example. The following main program build
-a connection with the \Redis{} server, runs an embedded program |prog|, and
-prints the result:
+We present a larger example as a summary. The task is to store a queue of
+messages in \Redis{}. Messages are represented by a ByteString and an
+identifier:
+\begin{spec}
+data Message = Msg ByteString Integer deriving (Show, Generic)
+instance Serialize Message where  {-"~~."-}
+\end{spec}
+
+In the data store, the queue is represented by a list. Before pushing a message
+into the queue, we increment |id|, a key storing a counter, and use it as the
+identifier of the message:
+\begin{spec}
+push  :: (StringOfIntegerOrNX xs "id", ListOrNX xs "queue")
+      => ByteString -> Edis xs (Set xs "queue" (ListOf Message)) (EitherReply Integer)
+push msg =  incr kId
+    `bind`  \i -> lpush kQueue (Msg msg (fromRight i)) {-"~~,"-}
+\end{spec}%​
+where |fromRight :: Either a b -> b| extract the value wrapped by constructor
+|Right| and, for brevity, the proxies are given names: \\
+\noindent{\centering %\small
+\begin{minipage}[b]{0.4\linewidth}
+\begin{spec}
+kId :: Proxy "id"
+kId = Proxy {-"~~,"-}
+\end{spec}
+\end{minipage}
+\begin{minipage}[b]{0.4\linewidth}
+\begin{spec}
+kQueue :: Proxy "queue"
+kQueue = Proxy {-"~~."-}
+\end{spec}
+\end{minipage}}\\
+To pop a message we use the function |rpop| to extract the
+rightmost element of a list:
+\begin{spec}
+pop  :: (Get xs "queue" ~ ListOf Message)
+     => Edis xs xs (EitherReply (Maybe Message))
+pop = rpop kQueue {-"~~."-}
+\end{spec}
+To get things going, the following main program build a connection with the
+\Redis{} server, runs an embedded program |prog|, and prints the result:
 \begin{spec}
 main :: IO ()
-main = do
-    conn    <- connect defaultConnectInfo
-    result  <- runRedis conn $ unEdis $ prog
-    print result {-"~~."-}
+main = do conn <- connect defaultConnectInfo
+          result <- runRedis conn (unEdis (start >>> prog))
+          print $ result
+          return () {-"~~,"-}
+
+prog =  declare kId     (Proxy :: Proxy Integer)
+   >>>  declare kQueue  (Proxy :: Proxy (ListOf Message))
+   >>>  push "hello"
+   >>>  push "world"
+   >>>  pop {-"~~,"-}
 \end{spec}
-The embedded program |prog| increases the value of |"A"| as an integer, push the incremented value to list |"L"|, and then pops it out:
-\begin{spec}
-prog :: Edis NIL (TList (TPar ("A", StringOf Integer), TPar ("L", ListOf Integer))) Integer
-prog =  start
-        >>>     declare kA tInteger
-        >>>     incr kA
-        `bind`  \ n -> case n of
-                   Left err  -> lpush kL 0
-                   Right n   -> lpush kL n
-        >>>     lpop kL
-  where  (kA, kL, tInteger) =
-          (Proxy :: Proxy "A", Proxy :: Proxy "L", Proxy :: Proxy Integer) {-"~~."-}
-\end{spec}
-The sequencing operator |(>>>)| is defined by:
+where the monadic sequencing operator |(>>>)| is defined by:
 \begin{spec}
 (>>>) :: IMonad m => m p q a -> m q r b -> m p r b
 m1 >>> m2 = m1 `bind` (const m2) {-"~~."-}
 \end{spec}
+Use of |declare| in |prog| ensures that neither |"id"| nor |"queue"| exist
+before the execution of |prog|, while |start| in |main| guarantees that the
+program is given a fresh run without previously defined keys at all. Haskell
+is able to infer the type of |prog|:
+\begin{spec}
+prog :: Edis  NIL (TList (TPar ("id", Integer), TPar("queue", ListOf Message)))
+              (EitherReply (Maybe Message)) {-"~~."-}
+\end{spec}
+
 
 % The following program increases the value of |"A"| as an integer, push the result of the increment to list |"L"|, and then pops it out:
 % \begin{spec}
@@ -366,5 +406,3 @@ m1 >>> m2 = m1 `bind` (const m2) {-"~~."-}
 %     >>> lpush   (Proxy :: Proxy "L") 0
 %     >>> lpop    (Proxy :: Proxy "L")
 % \end{spec}
-
-\todo{Give a more interesting example?}
