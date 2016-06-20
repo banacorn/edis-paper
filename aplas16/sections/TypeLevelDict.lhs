@@ -74,7 +74,7 @@ however, a string can be promoted to a type having kind |Symbol|. In the express
 \begin{spec}
 "this is a type-level string literal" :: Symbol {-"~~,"-}
 \end{spec}
-the string on the left-hand side of |(::)| is a type, having kind |Symbol|.
+the string on the left-hand side of |(::)| is a type whose kind is |Symbol|.
 
 With all of these ingredients, we are ready to build our dictionaries, or
 type-level associate lists:
@@ -148,19 +148,19 @@ more general instance, |a `Or` b|. In a closed type family we may resolve the
 overlapping in order, just like how cases overlapping is resolved in term-level
 functions.
 
-We are now able to define operations on type-level dictionaries. Let's begin
-with dictionary lookup:
+Now we can define operations on type-level dictionaries. Let us begin
+with:
 \begin{spec}
 type family Get (xs :: [(Symbol, *)]) (k :: Symbol) :: * where
-    Get (TPar (k, x) :- xs) k  =  x
-    Get (TPar (t, x) :- xs) k  =  Get xs k {-"~~."-}
+    Get (TPar (k,  x) :- xs) k  =  x
+    Get (TPar (t,  x) :- xs) k  =  Get xs k {-"~~."-}
 \end{spec}
-The type-level function |Get| returns the entry associated with key |k| in the
+|Get xs k| returns the entry associated with key |k| in the
 dictionary |xs|. Notice, in the first case, how type-level equality can be
 expressed by unifying type variables with the same name. Note also that |Get| is
 a partial function on types: while |Get (TList (TPar ("A", Int))) "A"| evaluates
 to |Int|, when |Get (TList (TPar ("A", Int))) "B"| appears in a type expression,
-there are no applicable rules to reduce it. The expression thus stays as it is.
+there are no applicable rules to reduce it. The expression thus stays un-reduced.
 
 % For our applications it is more convenient to make |Get| total, as we would at
 % the term level, by having it return a |Maybe|:
@@ -171,7 +171,7 @@ there are no applicable rules to reduce it. The expression thus stays as it is.
 %     Get (TPar(t, x) :- xs)  k = Get xs k {-"~~."-}
 % \end{spec}
 %
-Some other dictionary-related functions are defined in a similar fashion
+Some other dictionary-related functions are defined
 in Figure \ref{fig:dict-operations}. The function |Set| either updates an
 existing entry or inserts a new entry, |Del| removes an entry matching
 a given key, while |Member| checks whether a given key exists in the
