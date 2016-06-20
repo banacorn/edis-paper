@@ -33,7 +33,7 @@ the computation returned by |f|. The result is a monad |m p r b|.
 
 We define a new indexed monad |Edis|. At term level, the |unit| and |bind|
 methods are not interesting: they merely make calls to |return| and |(>>=)| of
-|Redis|, and extracts and re-apply the constructor |Edis| when necessary.
+|Redis|, and extract and re-apply the constructor |Edis| when necessary.
 With |Edis| being a |newtype|, they can be optimized away in runtime. The
 purpose is to add the pre/postconditions at type level:
 \begin{spec}

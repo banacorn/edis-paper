@@ -7,7 +7,7 @@
 
 \Redis{}\footnote{\url{https://redis.io}} is an open source, in-memory data
 structure store, often used as database, cache, and message broker. A \Redis{}
-data store can be think of as a set of key-value pairs. The value can be a
+data store can be thought of as a set of key-value pairs. The value can be a
 string, a list of strings, a set of strings, or a hash table of strings, etc.
 However, string is the only primitive datatype. Numbers, for example, have to be
 serialized to strings before being saved in the data store, and parsed back to
@@ -122,7 +122,8 @@ operators such as \texttt{LLEN} when it can be called, and allow it to be used
 only in contexts that are safe. We may even want to explicitly declare a fresh
 key and its type, to prevent it from unexpectedly being used as some other type.
 
-This paper discusses the techniques we used and experiences we learned from building such a language, nicknamed \Edis{}. We constructed an {\em indexed
+This paper discusses the techniques we used and the experiences we learned from
+building such a language, nicknamed \Edis{}. We constructed an {\em indexed
 monad}, on top of the monad |Redis|, which is indexed by a dictionary that
 maintains the set of currently defined keys and their types. To represent
 the dictionary, we need to encode variable bindings with {\em type-level} lists

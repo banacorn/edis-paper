@@ -9,7 +9,9 @@ One of the challenges of statically ensuring type correctness of stateful
 languages is that the type of the value of a key can be altered by updating.
 In \Redis{}, one may delete an existing key and create it again by assigning to
 it a value of a different type. To ensure type correctness, we keep track of the
-types of all existing keys in a {\em dictionary} --- an associate list, or a list of pairs of keys and some encoding of types. For example, we may use the dictionary |[("A",Int), ("B", Char), ("C", Bool)]| to represent a
+types of all existing keys in a {\em dictionary} --- an associate list, or a
+list of pairs of keys and some encoding of types. For example, we may use the
+dictionary |[("A",Int), ("B", Char), ("C", Bool)]| to represent a
 predicate, or a constraint, stating that ``the keys in the data store are |"A"|,
 |"B"|, and |"C"|, respectively assigned values of type |Int|, |Char|, and
 |Bool|.'' (This representation will be refined in the next section.)
@@ -153,7 +155,7 @@ type family Get (xs :: [(Symbol, *)]) (k :: Symbol) :: * where
     Get (TPar (k, x) :- xs) k  =  x
     Get (TPar (t, x) :- xs) k  =  Get xs k {-"~~."-}
 \end{spec}
-The type-level function |Get| returns the entry associated with key |s| in the
+The type-level function |Get| returns the entry associated with key |k| in the
 dictionary |xs|. Notice, in the first case, how type-level equality can be
 expressed by unifying type variables with the same name. Note also that |Get| is
 a partial function on types: while |Get (TList (TPar ("A", Int))) "A"| evaluates
