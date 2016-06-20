@@ -13,7 +13,7 @@ necessary concepts when they are used.
 \label{sec:proxy-key}
 
 The \Hedis{} function |del :: [ByteString] -> Redis (EitherReply Integer)| takes a list of keys (encoded to |ByteString|) and removes the entries having those
-keys in the database. For reason to be explained later, we consider an \Edis{}
+keys in the database. For some reason to be explained later, we consider an \Edis{}
 counterpart that takes only one key. A first attempt may lead to something like
 the following:
 \begin{spec}
@@ -54,7 +54,7 @@ Now that the type checker has access to the key, the type of |del| can be
 
 The next problem is that, |del|, at term level, gets only a value constructor
 |Proxy| without further information, while it needs to pass a |ByteString| key
-to |Hedis.del|. Every concrete string literal lifted to a type, for example
+to |Hedis.del|. Every concrete string literal lifted to a type, for example,
 |"A"|, belongs to a type class |KnownSymbol|. For all type |k| in |KnownSymbol|,
 the function |symbolVal|:
 < symbolVal :: KnownSymbol k => proxy k -> String {-"~~,"-}
@@ -68,7 +68,7 @@ del key = Edis (Hedis.del [encodeKey key])  {-"~~,"-}
 where |encodeKey = encode . symbolVal|.
 
 A final note: the function |encode|, from the Haskell library {\sc cereal},
-helps to convert certain datatype that are {\em serializable} into |ByteString|.
+helps to convert certain datatypes that are {\em serializable} into |ByteString|.
 The function and its dual |decode| will be used more later.
 \begin{spec}
 encode  :: Serialize a => a -> ByteString {-"~~,"-}
@@ -82,7 +82,7 @@ As mentioned before, while \Redis{} provide a number of container types
 including lists, sets, and hash, etc., the primitive type is string.
 \Hedis{} programmers manually convert data of other types to strings before
 saving them into the data store. In \Edis{}, we wish to save some of the
-effort for the programmers, as well as keeping a careful record of the intended
+efforts for the programmers, as well as keeping a careful record of the intended
 types of the strings in the data store.
 
 To keep track of intended types of strings in the data store, we define the
@@ -110,7 +110,7 @@ with an entry |TPar ("A", StringOf Bool)|. If |"A"| is not in the dictionary,
 this entry is added; otherwise the old type of |"A"| is updated to
 |StringOf Bool|.
 
-\Redis{} command \texttt{INCR} reads the (string) value of the given key, parse
+\Redis{} command \texttt{INCR} reads the (string) value of the given key, parses
 it as an integer, and increments it by one, before storing it back. The command
 \texttt{INCRBYFLOAT} increments the floating point value of a key by a given
 amount. They are defined in \Edis{} below:
@@ -124,7 +124,7 @@ incrbyfloat  :: (KnownSymbol k, Get xs k ~ StringOf Double)
 incrbyfloat key eps = Edis (Hedis.incrbyfloat (encodeKey key) eps) {-"~~."-}
 \end{spec}
 Notice the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
-that the intended type of value of |k| must respectively be |Integer| and
+that the intended type of the value of |k| must respectively be |Integer| and
 |Double|. The function |incr| is only allowed to be called in a context where
 the type checker is able to reduce |Get xs k| to |StringOf Integer| ---
 recall that when |k| is not in |xs|, |Get xs k| does not reduce. The type of
@@ -268,7 +268,7 @@ and |Member| defined for dictionaries.
 Once those type-level functions are defined, embedding of \Hedis{} commands for
 hashes is more or less routine. For example, functions |hset| and |hget|
 are shown below. Note that, instead of |hmset| (available in \Hedis{}), we
-provide a function |hset| that assigns fields and values one pair at at time.
+provide a function |hset| that assigns fields and values one pair at a time.
 \begin{spec}
 hset  :: (KnownSymbol k, KnownSymbol f, Serialize a, HashOrNX xs k)
       => Proxy k -> Proxy f -> x
@@ -286,9 +286,26 @@ hget key field =
 \subsection{Assertions}
 \label{sec:assertions}
 
-Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
-very error-prone. It might be preferable if we can explicit declare some new
-keys, after ensure that they do not already exist (in our types). This can be done below:
+Consider the following scenario: We want to retrieve the value of some
+ existing key, say, |"ab initio"|, with the function\footnote{The semantics of
+ |get| in \Redis{} is actually more forgiving, which will be discussed in the
+ later section}:
+\begin{spec}
+get  :: (KnownSymbol k, Serialize a, StringOf a ~ Get xs k)
+     => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~."-}
+\end{spec}
+
+However, Haskell would complain that, the key |"ab initio"| was not
+ before seen in the dictionary. So we could never write programs to retrieve the
+ value of |"ab initio"|, unless its creation was witnessed by the type checker.
+
+
+% Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
+% very error-prone. It might be preferable if we can explicit declare some new
+% keys, after ensuring that they do not already exist (in our types). This can be done below:
+It might be preferable if we can explicitly declare some new keys, under the
+ precondition that they do not already exist in our types. This can be done as
+ follows:
 \begin{spec}
 declare  :: (KnownSymbol k, Member xs k ~ False)
          => Proxy k -> Proxy a -> Edis xs (Set xs k a) ()
@@ -298,10 +315,17 @@ declare key typ = Edis (return ()) {-"~~."-}
 %         => Proxy s -> Edis xs (Del xs s) ()
 % renounce s = Edis $ return () {-"~~."-}
 The command |declare key typ|, where |typ| is the proxy of |a|, adds a fresh
-|key| with type |a| into the dictionary. The key is not actually created yet.
-The declaration, however, ensures that if |key| is actually created, perhaps
-by one of those ``well-typed or non-existent'' command, its type must be |a|.
-The command |start| initializes the dictionary to the empty list:
+ |key| with type |a| into the dictionary. Notice that |declare| does nothing at
+ term level, but simply returns |()|, since it only has effects on types.
+
+% The key is not actually created yet.
+% The declaration, however, ensures that if |key| is actually created, perhaps
+% by one of those ``well-typed or non-existent'' command, its type must be |a|.
+% The command |start| initializes the dictionary to the empty list:
+
+Another command for type level assertion, |start|, initializes the dictionary to
+ the empty list, comes in handy when starting a series of \Edis{} commands:
+
 \begin{spec}
 start :: Edis NIL NIL ()
 start = Edis (return ()) {-"~~."-}
@@ -309,7 +333,7 @@ start = Edis (return ()) {-"~~."-}
 
 \subsection{A Larger Example}
 
-As a summary, we present a larger example. The following main program build
+As a summary, we present a larger example. The following main program builds
 a connection with the \Redis{} server, runs an embedded program |prog|, and
 prints the result:
 \begin{spec}

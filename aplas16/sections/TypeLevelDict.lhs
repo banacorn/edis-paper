@@ -15,7 +15,7 @@ predicate, or a constraint, stating that ``the keys in the data store are |"A"|,
 |Bool|.'' (This representation will be refined in the next section.)
 
 The dictionary above mixes values (strings such as |"A"|, |"B"|) and types.
-Further more, as mentioned in Section~\ref{sec:indexed-monads}, the
+Furthermore, as mentioned in Section~\ref{sec:indexed-monads}, the
 dictionaries will be parameters to the indexed monad |Edis|. In a dependently
 typed programming language (without the so-called ``phase distinction'' ---
 separation between types and terms), this would pose no problem. In Haskell
@@ -34,8 +34,8 @@ Consider the datatype definitions below:
 \begin{spec}
 data Nat = Zero | Suc Nat {-"~~,\qquad"-} data [a] = [] | a : [a] {-"~~."-}
 \end{spec}
-The lefthand side is usually seen as having defined a type |Nat :: *|,
-and two value constructors |Zero :: Nat| and |Suc :: Nat -> Nat|. The righthand
+The left-hand side is usually seen as having defined a type |Nat :: *|,
+and two value constructors |Zero :: Nat| and |Suc :: Nat -> Nat|. The right-hand
 side is how Haskell lists are understood. The {\em kind} of |[.]| is |* -> *|,
 since it takes a lifted type |a| to a lifted type |[a]|. The two value
 constructors respectively have types |[] :: [a]| and |(:) :: a -> [a] ->
@@ -72,7 +72,7 @@ however, a string can be promoted to a type having kind |Symbol|. In the express
 \begin{spec}
 "this is a type-level string literal" :: Symbol {-"~~,"-}
 \end{spec}
-the string on the lefthand side of |(::)| is a type, having kind |Symbol|.
+the string on the left-hand side of |(::)| is a type, having kind |Symbol|.
 
 With all of these ingredients, we are ready to build our dictionaries, or
 type-level associate lists:
@@ -112,8 +112,8 @@ type family Or (a :: Bool) (b :: Bool) :: Bool
 \end{spec}
 \end{minipage}
 }\\
-The lefthand side is a typical definition of |(||||)| by pattern matching.
-On the righthand side, |Bool| is not a type, but a type lifted to a kind,
+The left-hand side is a typical definition of |(||||)| by pattern matching.
+On the right-hand side, |Bool| is not a type, but a type lifted to a kind,
 while |True| and |False| are types of kind |Bool|. The declaration says that
 |Or| is a family of types, indexed by two parameters |a| and |b| of kind |Bool|.
 The type with index |TRUE| and |b| is |TRUE|, and all other indices lead to |b|.
