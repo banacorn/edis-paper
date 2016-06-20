@@ -7,7 +7,7 @@
 
 Stateful computations are often reasoned using Hoare logic. A {\em Hoare triple}
 $\{P\} S \{Q\}$ denotes the following proposition: if the statement $S$ is
-executed in a state satisfying prediate $P$, when it terminates, the state must
+executed in a state satisfying predicate $P$, when it terminates, the state must
 satisfy predicate $Q$. Predicates $P$ and $Q$ are respectively called the
 \emph{precondition} and the \emph{postcondition} of the Hoare triple.
 
@@ -58,7 +58,7 @@ case. For brevity we abbreviate |Either Reply a| to |EitherReply a|.
 
 The command \texttt{PING} in \Redis{} does nothing but replying a message
 \texttt{PONG} if the connection is alive. In \Hedis{}, |ping| has type
-|Redis (EitherReply Status)|. The \Edis{} version of |ping| simply applys an additional constructor (functions from \Hedis{} are qualified with |Hedis| to
+|Redis (EitherReply Status)|. The \Edis{} version of |ping| simply applies an additional constructor (functions from \Hedis{} are qualified with |Hedis| to
 prevent name clashing):
 \begin{spec}
 ping :: Edis xs xs (EitherReply Status)

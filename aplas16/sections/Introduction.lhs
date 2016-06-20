@@ -57,7 +57,7 @@ binary strings in \Redis{}, are represented using Haskell |ByteString|.
 % \footnotetext{\Hedis{} provides another kind of context, |RedisTx|, for
 % \emph{transactions}. We focus on |Redis| in this paper.}
 
-\paragraph{The Problems} Most commands only works with data of certain types. In
+\paragraph{The Problems} Most commands only work with data of certain types. In
 the following example, the key \texttt{some-string} is assigned a string
 \texttt{foo} --- the command \texttt{SET} always assigns a string to a key.
 The subsequent call to \texttt{SADD}, which adds a value to a set, thus causes a runtime error.
@@ -69,9 +69,9 @@ redis> SADD some-string bar
 the wrong kind of value
 \end{Verbatim}
 \noindent For another source of type error, the command \texttt{INCR key}
-increments the value associated to \texttt{key} by one. With strings being the
+increments the value associated with \texttt{key} by one. With strings being the
 only primitive type, \Redis{} parses the stored string to an integer and, after
-incrementation, stores a string back. If the string can not be parse as an
+incrementation, stores a string back. If the string can not be parsed as an
 integer, a runtime error is raised.
 
 The reader must have noticed the peculiar pattern of value creation and updating
@@ -83,7 +83,7 @@ redis> LPUSH some-list bar
 (integer) 1
 \end{Verbatim}
 \noindent Another command \texttt{LLEN} returns the length of the list, and
-signals an error if the key is not associated to a list:
+signals an error if the key is not associated with a list:
 \begin{Verbatim}[xleftmargin=.4in]
 redis> LLEN some-list
 (integer) 1
@@ -114,7 +114,7 @@ program = do
 Such a programming model is certainly very error-prone. Working within Haskell,
 a host language with a strong typing system, one naturally wishes to build a
 domain-specific embedded language (DSEL) that exploits the rich type system
-of Haskell to not only ensure absence of \Redis{} type errors, but also provides
+of Haskell to not only ensure the absence of \Redis{} type errors, but also provides
 better documentations. We wish to be sure that a program calling \texttt{INCR},
 for example, can be type checked only if we can statically guarantee that the
 value to be accessed is indeed an integer. We wish to see from the type of
