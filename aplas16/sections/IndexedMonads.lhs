@@ -11,13 +11,12 @@ executed in a state satisfying predicate $P$, when it terminates, the state must
 satisfy predicate $Q$. Predicates $P$ and $Q$ are respectively called the
 \emph{precondition} and the \emph{postcondition} of the Hoare triple.
 
-In Haskell, stateful computations are represented by monads. In order to
-reason about their behaviors within the type system, we wish to label a state
-monad with its pre and postcondition. An \emph{indexed monad}~%
-\cite{indexedmonad} (also called \emph{parameterised monad} or \emph{monadish})
-is a monad that, in addition to the type of its result, takes two more
-type arguments representing an initial state and a final state, to be
-interpreted like a Hoare triple:
+In Haskell, stateful computations are represented by monads. To reason about
+them within the type system, we wish to label a state monad with its pre and
+postcondition. An \emph{indexed monad}~\cite{indexedmonad} (also called a
+\emph{parameterised monad} or \emph{monadish}) is a monad that, in addition to
+the type of its result, takes two more type parameters representing an initial
+state and a final state, to be interpreted like a Hoare triple:
 \begin{spec}
 class IMonad m where
     unit :: a -> m p p a
@@ -46,11 +45,11 @@ instance IMonad Edis where
 
 The properties of the state we care about are the set of currently
 allocated keys and types of their values. We will present, in Section~\ref{sec:type-level-dict}, techniques that allow us to specify
-properties such as ``the keys in the database are |"A"|, |"B"|, and |"C"|,
+properties such as ``the keys in the data store are |"A"|, |"B"|, and |"C"|,
 respectively assigned values of type |Int|, |Char|, and |Bool|.'' For now,
 however, let us look at the simplest \Redis{} command.
 
-\Redis{} commands can be executed in two contexts: normal, and in a \emph{transaction}. In \Hedis{}, a command yielding value of type |a| in the
+\Redis{} commands can be executed in two contexts: the normal context, or a \emph{transaction}. In \Hedis{}, a command yielding value of type |a| in the
 normal case is represented by |Redis (Either Reply a)|, as mentioned in
 Section~\ref{sec:introduction}; in a transaction, the command is represented by
 two other datatypes |RedisTx (Queued a)|. In this paper we focus on the former
@@ -64,6 +63,6 @@ prevent name clashing):
 ping :: Edis xs xs (EitherReply Status)
 ping = Edis Hedis.ping {-"~~."-}
 \end{spec}
-Since |ping| does not alter the database, the postcondition and precondition
+Since |ping| does not alter the data store, the postcondition and precondition
 are the same. Commands that are more interesting will be introduced after
 we present our type-level encoding of constraints on states.

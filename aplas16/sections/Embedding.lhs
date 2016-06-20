@@ -79,11 +79,11 @@ decode  :: Serialize a => ByteString -> Either String a {-"~~."-}
 \label{sec:polymorphic-redis}
 
 As mentioned before, while \Redis{} provide a number of container types
-including lists, sets, and hash, etc., the primitive type is string.
-\Hedis{} programmers manually convert data of other types to strings before
-saving them into the data store. In \Edis{}, we wish to save some of the
-effort for the programmers, as well as keeping a careful record of the intended
-types of the strings in the data store.
+including lists, sets, and hash, etc., the primitive type is string. \Hedis{}
+programmers manually convert data of other types to strings before saving them
+into the data store. In \Edis{}, we wish to save some of the effort for the
+programmers, as well as keeping a careful record of the intended types of the
+strings in the data store.
 
 To keep track of intended types of strings in the data store, we define the
 following types (that have no terms):
@@ -127,8 +127,8 @@ Notice the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
 that the intended type of value of |k| must respectively be |Integer| and
 |Double|. The function |incr| is only allowed to be called in a context where
 the type checker is able to reduce |Get xs k| to |StringOf Integer| ---
-recall that when |k| is not in |xs|, |Get xs k| does not reduce. The type of
-|incrbyfloat| works in a similar way.
+recall that when |k| is not in |xs|, |Get xs k| cannot be fully reduced. The
+type of |incrbyfloat| works in a similar way.
 
 \subsection{Disjunctive Constraints}
 \label{sec:disjunctive-constraints}
@@ -220,14 +220,14 @@ redis> hget user birthyear
 "1992"
 \end{Verbatim}
 
-For a hash to be useful, the fields could be of different types.
-To keep track of hashes, the |HashOf| constructor takes a list of |(Symbol, *)| pairs:
+For a hash to be useful, the fields should have different types. To keep track
+of types of fields in a hash, the |HashOf| constructor takes a list of |(Symbol, *)| pairs:
 \begin{spec}
 data HashOf :: [ (Symbol, *) ] -> * {-"~~."-}
 \end{spec}
-Therefore, |(k,HashOF ys)| is an entry that may appear in a dictionary, indicating that
-the value of key |k| is a hash, where |ys| itself is a dictionary, keeping track of the
-fields in the hash and their types.
+By having an entry |(k,HashOF ys)| in a dictionary, we denote that the value of
+key |k| is a hash whose fields and their types are specified by |ys|, which is
+also a dictionary.
 
 \begin{figure}[t]
 \begin{spec}
@@ -256,32 +256,42 @@ type family MemHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) :: Bool 
 \label{fig:xxxHash}
 \end{figure}
 
-Figure \ref{fig:xxxHash} presents some operations on dictionaries we need when
+Figure \ref{fig:xxxHash} presents some operations we need on dictionaries when
 dealing with hashes. Let |xs| be a dictionary, |GetHash xs k f| returns the type
 of field |f| in the hash assigned to key |k|, if both |k| and |f| exists.
 |SetHash xs k f a| assigns the type |a| to the field |f| of hash |k|; if either
 |f| or |k| does not exist, the hash/field is created. |Del xs k f| removes a
-field, while |MemHash xs k f| checks whether the key |k| exists in |xs|, is a
-hash, and has field |f|. Their definitions make use of functions |Get|, |Set|,
-and |Member| defined for dictionaries.
+field, while |MemHash xs k f| checks whether the key |k| exists in |xs|, and its
+value is a hash having field |f|. Their definitions make use of functions |Get|,
+|Set|, and |Member| defined for dictionaries.
 
 Once those type-level functions are defined, embedding of \Hedis{} commands for
 hashes is more or less routine. For example, functions |hset| and |hget|
-are shown below. Note that, instead of |hmset| (available in \Hedis{}), we
-provide a function |hset| that assigns fields and values one pair at at time.
+are shown below:
 \begin{spec}
 hset  :: (KnownSymbol k, KnownSymbol f, Serialize a, HashOrNX xs k)
-      => Proxy k -> Proxy f -> x
+      => Proxy k -> Proxy f -> a
       -> Edis xs (SetHash xs k f (StringOf a)) (EitherReply Bool)
 hset key field val =
   Edis (Hedis.hset (encodeKey key) (encodeKey field) (encode val)) {-"~~,"-}
+
 
 hget  :: (  KnownSymbol k, KnownSymbol f, Serialize a,
             StringOf a ~ GetHash xs k f)
       => Proxy k -> Proxy f -> Edis xs xs (EitherReply (Maybe a))
 hget key field =
-  Edis (Hedis.hget (encodeKey key) (encodeKey field) >>= decodeAsMaybe) {-"~~."-}
+  Edis (Hedis.hget (encodeKey key) (encodeKey field) >>= decodeAsMaybe) {-"~~,"-}
 \end{spec}
+where |decodeAsMaybe :: Serialize a => (EitherReply (Maybe
+ByteString)) -> Redis (EitherReply (Maybe a))|, using the function |decode|
+mentioned in Section \ref{sec:proxy-key}, parses the |ByteString| in
+|EitherReply (Maybe _)| to type |a|. The definition is a bit tedious but
+routine.
+
+Note that, instead of |hmset| (available in \Hedis{}), we
+provide a function |hset| that assigns fields and values one pair at at time.
+We will talk about difficulties of implementing |hmset| in
+Section~\ref{sec:discussions}.
 
 \subsection{Assertions}
 \label{sec:assertions}
@@ -310,55 +320,61 @@ start = Edis (return ()) {-"~~."-}
 \subsection{A Larger Example}
 
 We present a larger example as a summary. The task is to store a queue of
-messages in \Redis{}. Messages are represented by a ByteString and an
-identifier:
+messages in \Redis{}. Messages are represented by a |ByteString| and an
+|Integer| identifier:
 \begin{spec}
-data Message = Msg ByteString Integer deriving (Show, Generic)
+data Message = Msg ByteString Integer deriving (Show, Generic) {-"~~,"-}
 instance Serialize Message where  {-"~~."-}
 \end{spec}
 
 In the data store, the queue is represented by a list. Before pushing a message
-into the queue, we increment |id|, a key storing a counter, and use it as the
+into the queue, we increment |counter|, a key storing a counter, and use it as the
 identifier of the message:
 \begin{spec}
-push  :: (StringOfIntegerOrNX xs "id", ListOrNX xs "queue")
+push  :: (StringOfIntegerOrNX xs "counter", ListOrNX xs "queue")
       => ByteString -> Edis xs (Set xs "queue" (ListOf Message)) (EitherReply Integer)
-push msg =  incr kId
+push msg =  incr kCounter
     `bind`  \i -> lpush kQueue (Msg msg (fromRight i)) {-"~~,"-}
 \end{spec}%​
-where |fromRight :: Either a b -> b| extract the value wrapped by constructor
-|Right| and, for brevity, the proxies are given names: \\
+where |fromRight :: Either a b -> b| extracts the value wrapped by constructor
+|Right|, and the constraint |StringOfIntegerOrNX xs k| holds if either |k|
+presents in |xs| and is converted from an |Integer|, or |k| does not
+present in |xs|. For brevity, the proxies are given names: \\
 \noindent{\centering %\small
 \begin{minipage}[b]{0.4\linewidth}
 \begin{spec}
-kId :: Proxy "id"
-kId = Proxy {-"~~,"-}
+kCounter ::  Proxy "counter"
+kCounter =   Proxy {-"~~,"-}
 \end{spec}
 \end{minipage}
 \begin{minipage}[b]{0.4\linewidth}
 \begin{spec}
-kQueue :: Proxy "queue"
-kQueue = Proxy {-"~~."-}
+kQueue ::  Proxy "queue"
+kQueue =   Proxy {-"~~."-}
 \end{spec}
 \end{minipage}}\\
-To pop a message we use the function |rpop| to extract the
-rightmost element of a list:
+To pop a message we use the function |rpop| which, given a key associated with
+a list, extracts the rightmost element of the list
 \begin{spec}
 pop  :: (Get xs "queue" ~ ListOf Message)
      => Edis xs xs (EitherReply (Maybe Message))
-pop = rpop kQueue {-"~~."-}
+pop = rpop kQueue {-"~~,"-}
+
+rpop  :: (KnownSymbol k, Serialize a, Get xs k ~ ListOf a)
+      => Proxy k -> Edis xs xs (EitherReply (Maybe a))
+rpop key = Edis (Hedis.rpop (encodeKey key) >>= decodeAsMaybe) {-"~~."-}
 \end{spec}
-To get things going, the following main program build a connection with the
-\Redis{} server, runs an embedded program |prog|, and prints the result:
+To get things going, the main program builds a connection with the \Redis{}
+server, runs an embedded program |prog|, and prints the result, which in this
+example is |"hello"|:
 \begin{spec}
 main :: IO ()
-main = do conn <- connect defaultConnectInfo
-          result <- runRedis conn (unEdis (start >>> prog))
-          print $ result
-          return () {-"~~,"-}
+main = do  conn    <- connect defaultConnectInfo
+           result  <- runRedis conn (unEdis (start >>> prog))
+           print result {-"~~,"-}
 
-prog =  declare kId     (Proxy :: Proxy Integer)
-   >>>  declare kQueue  (Proxy :: Proxy (ListOf Message))
+prog =  declare kCounter  (Proxy :: Proxy Integer)
+   >>>  declare kQueue    (Proxy :: Proxy (ListOf Message))
    >>>  push "hello"
    >>>  push "world"
    >>>  pop {-"~~,"-}
@@ -366,14 +382,14 @@ prog =  declare kId     (Proxy :: Proxy Integer)
 where the monadic sequencing operator |(>>>)| is defined by:
 \begin{spec}
 (>>>) :: IMonad m => m p q a -> m q r b -> m p r b
-m1 >>> m2 = m1 `bind` (const m2) {-"~~."-}
+m1 >>> m2 = m1 `bind` (\ _ -> m2) {-"~~."-}
 \end{spec}
-Use of |declare| in |prog| ensures that neither |"id"| nor |"queue"| exist
+Use of |declare| in |prog| ensures that neither |"counter"| nor |"queue"| exist
 before the execution of |prog|, while |start| in |main| guarantees that the
 program is given a fresh run without previously defined keys at all. Haskell
 is able to infer the type of |prog|:
 \begin{spec}
-prog :: Edis  NIL (TList (TPar ("id", Integer), TPar("queue", ListOf Message)))
+prog :: Edis  NIL (TList (TPar ("counter", Integer), TPar("queue", ListOf Message)))
               (EitherReply (Maybe Message)) {-"~~."-}
 \end{spec}
 

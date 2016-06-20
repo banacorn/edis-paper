@@ -32,28 +32,28 @@ only to make |a| explicit.
 We think it is more reasonable to enforce that, when |get| is called, the key
 should exist in the data store. Thus |get| in \Redis{} has the following type:
 \begin{spec}
-get  :: (KnownSymbol k, Serialize a, StringOf a ~ Get xs k)
+get  :: (KnownSymbol k, Serialize a, Get xs k ~ StringOf a)
      => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~,"-}
 \end{spec}
 which requires that |(k,a)| presents in |xs| and thus |a| is inferrable from
 |xs| and |k|.
 
-\paragraph{Commands with Variable Numbers of Input/Outputs.} Recall that, in
+\paragraph{Variable Number of Input/Outputs.} Recall that, in
 Section~\ref{sec:proxy-key}, the \Redis{} command \texttt{DEL} takes a variable
 number of keys, while our \Edis{} counterpart takes only one. Some \Redis{}
 commands take a variable number of arguments as inputs, and some returns
 multiple results. Most of them are accurately implemented in \Hedis{}. For
-another example of a variable-input command, |sinter| in \Hedis{}, whose type
-is shown below:
+another example of a variable-number input command, the type of |sinter| in
+\Hedis{} is shown below:
 \begin{spec}
-Hedis.sinter :: [ByteString] -> Redis (EitherReply [ByteString]) {-"~~,"-}
+Hedis.sinter :: [ByteString] -> Redis (EitherReply [ByteString]) {-"~~."-}
 \end{spec}
-takes a list of keys, values of which are all supposed to be sets, and computes
-their intersection (the returned list is the intersected set).
+It takes a list of keys, values of which are all supposed to be sets, and
+computes their intersection (the returned list is the intersected set).
 
 In \Edis{}, for a function to accept a list of keys as input, we have to
-specify that all the keys are in the class |KnownSymbol|. This is possible --
-we may define a datatype, indexed by the keys, serving as a witness that they
+specify that all the keys are in the class |KnownSymbol|. It can be done by
+defining a datatype, indexed by the keys, serving as a witness that they
 are all in |KnownSymbol|. We currently have not implemented such feature and
 leave it as a possible future work. For now, we offer commands that take fixed
 numbers of inputs. The \Edis{} version of |sinter| has type:
@@ -66,7 +66,6 @@ sinter ::  (  KnownSymbol k1, KnownSymbol k2, Serialize a,
 The function |hmset| in \Hedis{} allows one to set the values of many fields
 in a hash, while |hgetall| returns all the field-value pairs of a hash. They
 have the following types:
-\texttt{HGETALL} and has the following type:
 \begin{spec}
 Hedis.hmset    :: ByteString	-> [(ByteString, ByteString)]	-> Redis (EitherReply Status)	 {-"~~,"-}
 Hedis.hgetall  :: ByteString -> Redis (EitherReply [(ByteString, ByteString)]) {-"~~."-}
