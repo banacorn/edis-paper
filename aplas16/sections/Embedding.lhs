@@ -235,7 +235,8 @@ type family GetHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) :: * whe
     GetHash (TPar (k, HashOf hs  ) :- xs)  k f = Get hs f
     GetHash (TPar (l, y          ) :- xs)  k f = GetHash xs k f
 
-type family SetHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) (a :: *) :: [ (Symbol, *) ] where
+type family SetHash  (xs :: [ (Symbol, *) ]) (k :: Symbol)
+                     (f :: Symbol) (a :: *) :: [ (Symbol, *) ] where
     SetHash NIL                            k f a = TPar (k, HashOf (Set NIL f a)) :- NIL
     SetHash (TPar (k, HashOf hs  ) :- xs)  k f a = TPar (k, HashOf (Set hs  f a)) :- xs
     SetHash (TPar (l, y          ) :- xs)  k f a = TPar (l, y                  ) :- SetHash xs k f a
@@ -269,14 +270,15 @@ hashes is more or less routine. For example, functions |hset| and |hget|
 are shown below. Note that, instead of |hmset| (available in \Hedis{}), we
 provide a function |hset| that assigns fields and values one pair at at time.
 \begin{spec}
-hset :: (KnownSymbol k, KnownSymbol f, Serialize a, HashOrNX xs k)
-        => Proxy k -> Proxy f -> x
-        -> Edis xs (SetHash xs k f (StringOf a)) (EitherReply Bool)
+hset  :: (KnownSymbol k, KnownSymbol f, Serialize a, HashOrNX xs k)
+      => Proxy k -> Proxy f -> x
+      -> Edis xs (SetHash xs k f (StringOf a)) (EitherReply Bool)
 hset key field val =
   Edis (Hedis.hset (encodeKey key) (encodeKey field) (encode val)) {-"~~,"-}
 
-hget :: (KnownSymbol k, KnownSymbol f, Serialize x, StringOf x ~ GetHash xs k f)
-        => Proxy k -> Proxy f -> Edis xs xs (EitherReply (Maybe x))
+hget  :: (  KnownSymbol k, KnownSymbol f, Serialize a,
+            StringOf a ~ GetHash xs k f)
+      => Proxy k -> Proxy f -> Edis xs xs (EitherReply (Maybe a))
 hget key field =
   Edis (Hedis.hget (encodeKey key) (encodeKey field) >>= decodeAsMaybe) {-"~~."-}
 \end{spec}
