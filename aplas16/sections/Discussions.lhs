@@ -42,7 +42,8 @@ which requires that |(k,a)| presents in |xs| and thus |a| is inferrable from
 Section~\ref{sec:proxy-key}, the \Redis{} command \texttt{DEL} takes a variable
 number of keys, while our \Edis{} counterpart takes only one. Some \Redis{}
 commands take a variable number of arguments as inputs, and some returns
-multiple results. Most of them are accurately implemented in \Hedis{}. For another example of a variable-input command, |sinter| in \Hedis{}, whose type
+multiple results. Most of them are accurately implemented in \Hedis{}. For
+another example of a variable-input command, |sinter| in \Hedis{}, whose type
 is shown below:
 \begin{spec}
 Hedis.sinter :: [ByteString] -> Redis (EitherReply [ByteString]) {-"~~,"-}
@@ -62,14 +63,17 @@ sinter ::  (  KnownSymbol k1, KnownSymbol k2, Serialize a,
            => Proxy k1 -> Proxy k2 -> Edis xs xs (EitherReply [a]) {-"~~."-}
 \end{spec}
 
-The function |hgetall| in \Hedis{} implements the \Redis{} command \texttt{HGETALL} and has the following type:
+The function |hmset| in \Hedis{} allows one to set the values of many fields
+in a hash, while |hgetall| returns all the field-value pairs of a hash. They
+have the following types:
+\texttt{HGETALL} and has the following type:
 \begin{spec}
-Hedis.hgetall :: ByteString -> Redis (EitherReply [(ByteString, ByteString)]) {-"~~."-}
+Hedis.hmset    :: ByteString	-> [(ByteString, ByteString)]	-> Redis (EitherReply Status)	 {-"~~,"-}
+Hedis.hgetall  :: ByteString -> Redis (EitherReply [(ByteString, ByteString)]) {-"~~."-}
 \end{spec}
-It returns all the field-value pairs associated to a key in a hash table. Values
-of different fields usually have different types. A proper implementation of
-this function in \Redis{} should return a \emph{heterogeneous list}~\cite{hetero} --- a list whose elements can be of different types. We
-also leave such functions as a future work.
+Proper implementations of them in \Edis{} should accept or return a
+\emph{heterogeneous list}~\cite{hetero} --- a list whose elements can be of
+different types. We also leave such functions as a future work.
 
 \paragraph{Not All Safe Redis Programs Can Be Typechecked.}
 Enforcing a typing discipline rules out some programs that are likely to be erroneous, and reduces the number of programs that are allowed. Like all type

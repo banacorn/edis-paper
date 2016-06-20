@@ -5,7 +5,9 @@
 \section{Introduction}
 \label{sec:introduction}
 
-\Redis{}\footnote{\url{https://redis.io}} is an open source, in-memory data structure store, often used as database, cache, and message broker. A \Redis{} data store can be think of as a set of key-value pairs. The value can be a
+\Redis{}\footnote{\url{https://redis.io}} is an open source, in-memory data
+structure store, often used as database, cache, and message broker. A \Redis{}
+data store can be think of as a set of key-value pairs. The value can be a
 string, a list of strings, a set of strings, or a hash table of strings, etc.
 However, string is the only primitive datatype. Numbers, for example, have to be
 serialized to strings before being saved in the data store, and parsed back to
@@ -13,7 +15,8 @@ numbers to be manipulated with. While the concept is simple, \Redis{} is used
 as an essential component in a number of popular, matured services, including
 Twitter, GitHub, Weibo, StackOverflow, and Flickr, etc.
 
-For an example, consider the following sequence of commands, entered through the interactive interface of \Redis{}. The keys \texttt{some-set} and
+For an example, consider the following sequence of commands, entered through the
+interactive interface of \Redis{}. The keys \texttt{some-set} and
 \texttt{another-set} are both assigned a set of strings. The two call to
 command \texttt{SADD} respectively adds three and two strings to the two sets,
 before \texttt{SINTER} takes their intersection:
@@ -26,7 +29,8 @@ redis> SINTER some-set another-set
 1) "a"
 2) "b"
 \end{Verbatim}
-\noindent Notice that the keys \texttt{some-set} and \texttt{another-set}, if not existing before the call to \texttt{SADD}, are created on site. The calls to
+\noindent Notice that the keys \texttt{some-set} and \texttt{another-set}, if
+not existing before the call to \texttt{SADD}, are created on site. The calls to
 \texttt{SADD} return the sizes of the resulting sets.
 
 Many third party libraries provide interfaces for general purpose programming
@@ -45,7 +49,8 @@ program = do
     sadd "another-set" ["a", "b", "c"]
     sinter ["some-set", "another-set"] {-"~~."-}
 \end{spec}
-The function |sadd :: ByteString -> [ByteString] -> Redis (Either Reply Integer)| takes a key and a list of values as arguments, and returns a
+The function |sadd :: ByteString -> [ByteString] -> Redis (Either Reply Integer)|
+takes a key and a list of values as arguments, and returns a
 \Redis{} computation yielding |Integer|. Keys and values, being nothing but
 binary strings in \Redis{}, are represented using Haskell |ByteString|.
 

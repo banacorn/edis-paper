@@ -177,7 +177,7 @@ The \Edis{} counterpart of \texttt{LPUSH} and \texttt{LLEN} are therefore:
 \begin{spec}
 lpush  :: (KnownSymbol k, Serialize a, ListOrNX xs k)
        => Proxy k -> a -> Edis xs (Set xs k (ListOf a)) (EitherReply Integer)
-lpush key val = Edis (Redis.lpush (encodeKey key) [encode val]) {-"~~,"-}
+lpush key val = Edis (Hedis.lpush (encodeKey key) [encode val]) {-"~~,"-}
 
 llen  :: (KnownSymbol k, ListOrNX xs k)
       => Proxy k -> Edis xs xs (EitherReply Integer)
@@ -188,7 +188,7 @@ is given below:
 \begin{spec}
 sadd  :: (KnownSymbol k, Serialize a, SetOrNX xs k)
       => Proxy k -> a -> Edis xs (Set xs k (SetOf a)) (EitherReply Integer)
-sadd key val = Edis (Redis.sadd (encodeKey key) [encode val]) {-"~~,"-}
+sadd key val = Edis (Hedis.sadd (encodeKey key) [encode val]) {-"~~,"-}
 \end{spec}
 
 To see a command with a more complex type, consider |setnx|, which
@@ -197,12 +197,89 @@ uses the type-level function |If| defined in Section \ref{sec:type-fun}:
 setnx  :: (KnownSymbol k, Serialize a)
        => Proxy k -> a -> Edis xs  (If (Member xs k) xs (Set xs k (StringOf a)))
                                    (Either Reply Bool)
-setnx key val = Edis (Redis.setnx (encodeKey key) (encode val)) {-"~~."-}
+setnx key val = Edis (Hedis.setnx (encodeKey key) (encode val)) {-"~~."-}
 \end{spec}
 From the type one can see that |setnx key val| creates a new entry |(key,val)|
 in the data store only if |key| is fresh. The type of |setnx| computes a
 postcondition for static checking, as well as serving as a good documentation
 for its semantics.
+
+\subsection{Hashes}
+
+{\em Hash} is a useful datatype supported by \Redis{}. While the \Redis{} data
+store can be seen as a set of key/value pairs, a hash is itself a set of
+field/value pairs. The following commands assigns a hash to key \texttt{user}.
+The fields are \texttt{name}, \texttt{birthyear}, and \texttt{verified},
+respectively with values \texttt{banacorn}, \texttt{1992}, and \texttt{1}.
+\begin{Verbatim}[xleftmargin=.4in]
+redis> hmset user name banacorn birthyear 1992 verified 1
+OK
+redis> hget user name
+"banacorn"
+redis> hget user birthyear
+"1992"
+\end{Verbatim}
+
+For a hash to be useful, the fields could be of different types.
+To keep track of hashes, the |HashOf| constructor takes a list of |(Symbol, *)| pairs:
+\begin{spec}
+data HashOf :: [ (Symbol, *) ] -> * {-"~~."-}
+\end{spec}
+Therefore, |(k,HashOF ys)| is an entry that may appear in a dictionary, indicating that
+the value of key |k| is a hash, where |ys| itself is a dictionary, keeping track of the
+fields in the hash and their types.
+
+\begin{figure}[t]
+\begin{spec}
+type family GetHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) :: * where
+    GetHash (TPar (k, HashOf hs  ) :- xs)  k f = Get hs f
+    GetHash (TPar (l, y          ) :- xs)  k f = GetHash xs k f
+
+type family SetHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) (a :: *) :: [ (Symbol, *) ] where
+    SetHash NIL                            k f a = TPar (k, HashOf (Set NIL f a)) :- NIL
+    SetHash (TPar (k, HashOf hs  ) :- xs)  k f a = TPar (k, HashOf (Set hs  f a)) :- xs
+    SetHash (TPar (l, y          ) :- xs)  k f a = TPar (l, y                  ) :- SetHash xs k f a
+
+type family DelHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) :: [ (Symbol, *) ] where
+    DelHash NIL                           k f = NIL
+    DelHash (TPar (k, HashOf hs ) :- xs)  k f = TPar (k, HashOf (Del hs f )) :- xs
+    DelHash (TPar (l, y         ) :- xs)  k f = TPar (l, y                ) :- DelHash xs k f
+
+type family MemHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) :: Bool where
+    MemHash NIL                             k f = FALSE
+    MemHash (TPar (k, HashOf hs   ) :- xs)  k f = Member hs f
+    MemHash (TPar (k, x           ) :- xs)  k f = FALSE
+    MemHash (TPar (l, y           ) :- xs)  k f = MemHash xs k f
+\end{spec}
+\caption{Type-level operations for dictionaries with hashes.}
+\label{fig:xxxHash}
+\end{figure}
+
+Figure \ref{fig:xxxHash} presents some operations on dictionaries we need when
+dealing with hashes. Let |xs| be a dictionary, |GetHash xs k f| returns the type
+of field |f| in the hash assigned to key |k|, if both |k| and |f| exists.
+|SetHash xs k f a| assigns the type |a| to the field |f| of hash |k|; if either
+|f| or |k| does not exist, the hash/field is created. |Del xs k f| removes a
+field, while |MemHash xs k f| checks whether the key |k| exists in |xs|, is a
+hash, and has field |f|. Their definitions make use of functions |Get|, |Set|,
+and |Member| defined for dictionaries.
+
+Once those type-level functions are defined, embedding of \Hedis{} commands for
+hashes is more or less routine. For example, functions |hset| and |hget|
+are shown below. Note that, instead of |hmset| (available in \Hedis{}), we
+provide a function |hset| that assigns fields and values one pair at at time.
+\begin{spec}
+hset :: (KnownSymbol k, KnownSymbol f, Serialize a, HashOrNX xs k)
+        => Proxy k -> Proxy f -> x
+        -> Edis xs (SetHash xs k f (StringOf a)) (EitherReply Bool)
+hset key field val =
+  Edis (Hedis.hset (encodeKey key) (encodeKey field) (encode val)) {-"~~,"-}
+
+hget :: (KnownSymbol k, KnownSymbol f, Serialize x, StringOf x ~ GetHash xs k f)
+        => Proxy k -> Proxy f -> Edis xs xs (EitherReply (Maybe x))
+hget key field =
+  Edis (Hedis.hget (encodeKey key) (encodeKey field) >>= decodeAsMaybe) {-"~~."-}
+\end{spec}
 
 \subsection{Assertions}
 \label{sec:assertions}
@@ -211,7 +288,7 @@ Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
 very error-prone. It might be preferable if we can explicit declare some new
 keys, after ensure that they do not already exist (in our types). This can be done below:
 \begin{spec}
-declare  :: (KnownSymbol k, Member xs a ~ False)
+declare  :: (KnownSymbol k, Member xs k ~ False)
          => Proxy k -> Proxy a -> Edis xs (Set xs k a) ()
 declare key typ = Edis (return ()) {-"~~."-}
 \end{spec}
