@@ -220,8 +220,9 @@ redis> hget user birthyear
 "1992"
 \end{Verbatim}
 
-For a hash to be useful, the fields should have different types. To keep track
-of types of fields in a hash, the |HashOf| constructor takes a list of |(Symbol, *)| pairs:
+For a hash to be useful, we should allow the fields to have different types. To
+keep track of types of fields in a hash, |HashOf| takes a list of |(Symbol, *)|
+pairs:
 \begin{spec}
 data HashOf :: [ (Symbol, *) ] -> * {-"~~."-}
 \end{spec}
@@ -297,26 +298,25 @@ Section~\ref{sec:discussions}.
 \subsection{Assertions}
 \label{sec:assertions}
 
-Consider the following scenario: We want to retrieve the value of some
- existing key, say, |"ab initio"|, with the function\footnote{The semantics of
- |get| in \Redis{} is actually more forgiving, which will be discussed in the
- later section}:
-\begin{spec}
-get  :: (KnownSymbol k, Serialize a, StringOf a ~ Get xs k)
-     => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~."-}
-\end{spec}
+% Consider the following scenario: We want to retrieve the value of some existing
+% key, say, |"ab initio"|, with the function\footnote{The semantics of |get| in
+% \Redis{} is actually more forgiving. See Section~\ref{sec:discussions}.}:
+% \begin{spec}
+% get  :: (KnownSymbol k, Serialize a, StringOf a ~ Get xs k)
+%      => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~."-}
+% \end{spec}
+%
+% However, Haskell would complain that, the key |"ab initio"| was not
+% before seen in the dictionary. So we could never write programs to retrieve the
+% value of |"ab initio"|, unless its creation was witnessed by the type checker.
 
-However, Haskell would complain that, the key |"ab initio"| was not
- before seen in the dictionary. So we could never write programs to retrieve the
- value of |"ab initio"|, unless its creation was witnessed by the type checker.
 
-
-% Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
-% very error-prone. It might be preferable if we can explicit declare some new
-% keys, after ensuring that they do not already exist (in our types). This can be done below:
-It might be preferable if we can explicitly declare some new keys, under the
- precondition that they do not already exist in our types. This can be done as
- follows:
+Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
+very error-prone. It might be preferable if we can explicit declare some new
+keys, after ensuring that they do not already exist (in our types). This can be done below:
+% It might be preferable if we can explicitly declare some new keys, under the
+%  precondition that they do not already exist in our types. This can be done as
+%  follows:
 \begin{spec}
 declare  :: (KnownSymbol k, Member xs k ~ False)
          => Proxy k -> Proxy a -> Edis xs (Set xs k a) ()
