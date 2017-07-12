@@ -1,4 +1,5 @@
-\documentclass[sigplan,10pt,review]{acmart}\settopmatter{printfolios=true}
+\documentclass[sigplan]{acmart}
+\settopmatter{printfolios=true}
 
 \makeatletter\if@ACM@journal\makeatother
 %% Journal information (used by PACMPL format)
@@ -21,7 +22,7 @@
 \startPage{1}
 \fi
 
-\setcopyright{none}     
+\setcopyright{rightsretained}
 \bibliographystyle{ACM-Reference-Format}
 
 \usepackage{amsmath}
@@ -39,21 +40,23 @@
 \input{Preamble}
 \input{macro}
 
+\setlength{\mathindent}{10pt}
+
 \begin{document}
 
 \title{Type Safe Redis Queries}
 \subtitle{A Case Study of Type--Level Programming in Haskell}
 
 \author{Ting--Yan Lai}
-\authornote{Ting--Yan Lai was summer intern from 
+\authornote{Ting--Yan Lai was summer intern from
 the Institute of Computer Science and Engineering,
-National Chiao Tung University, Taiwan, 
+National Chiao Tung University, Taiwan,
 when part of this work was developed.}
 %% \authornote is optional;
 \affiliation{
 %  \position{Summer Intern}
-  \department{Institute of Information Science} 
-  \institution{Academia Sinica} 
+  \department{Institute of Information Science}
+  \institution{Academia Sinica}
   \streetaddress{128, Academia Road, Section 2}
   \city{Nangang, Taipei City}
   \postcode{115}
@@ -64,26 +67,26 @@ when part of this work was developed.}
 \author{Tyng--Ruey Chuang}
 \affiliation{
 %  \position{Associate Research Fellow}
-  \department{Institute of Information Science} 
-  \institution{Academia Sinica} 
+  \department{Institute of Information Science}
+  \institution{Academia Sinica}
   \streetaddress{128, Academia Road, Section 2}
   \city{Nangang, Taipei City}
   \postcode{115}
   \country{Taiwan}
 }
-\email{trc@iis.sinica.edu.tw} 
+\email{trc@iis.sinica.edu.tw}
 
 \author{Shin--Cheng Mu}
 \affiliation{
 %  \position{Associate Research Fellow}
-  \department{Institute of Information Science} 
-  \institution{Academia Sinica} 
+  \department{Institute of Information Science}
+  \institution{Academia Sinica}
   \streetaddress{128, Academia Road, Section 2}
   \city{Nangang, Taipei City}
   \postcode{115}
   \country{Taiwan}
 }
-\email{scm@iis.sinica.edu.tw} 
+\email{scm@iis.sinica.edu.tw}
 
 \begin{abstract}
 \Redis{} is an in-memory data structure store, often used as a database, with a
@@ -120,7 +123,7 @@ guarantees that type errors cannot happen for a class of \Redis{} programs.
 \ccsdesc[300]{Software and its engineering~Domain specific languages}
 \ccsdesc[300]{Information systems~Query languages}
 
-\keywords{Haskell, Redis, Dependent Type, Type Safety, Key-Value Store}  
+\keywords{Haskell, Redis, Type-Level Programming Type Safety, Key-Value Store}
 
 \maketitle
 

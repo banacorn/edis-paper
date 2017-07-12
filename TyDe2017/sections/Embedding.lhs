@@ -30,7 +30,7 @@ a runtime value to type-level?
 In a language with phase distinction like Haskell, it is certainly impossible
 to pass the value of |key| to the type checker if it truly is a runtime value,
 for example, a string read from the user. If the value of |key| can be
-determined statically, however, {\em singleton types} can be used to represent a
+determined statically, however, {\em singleton types}~\cite{singletons} can be used to represent a
 type as a value, thus build a connection between the two realms.
 
 A singleton type is a type that has only one term. When the term is built, it
@@ -102,7 +102,7 @@ the corresponding |set| in \Redis{} applies to any serializable type (those
 in the class |Serialize|), and performs the encoding for the user:
 \begin{spec}
 set  :: (KnownSymbol k, Serialize a)
-     => Proxy k -> a -> 
+     => Proxy k -> a ->
         Edis xs (Set xs k (StringOf a)) (Either Reply Status)
 set key val = Edis (Hedis.set (encodeKey key) (encode val)) {-"~~,"-}
 \end{spec}
@@ -122,7 +122,7 @@ incr key = Edis (Hedis.incr (encodeKey key)) {-"~~,"-}
 
 incrbyfloat  :: (KnownSymbol k, Get xs k ~ StringOf Double)
              => Proxy k -> Double -> Edis xs xs (EitherReply Double)
-incrbyfloat key eps = 
+incrbyfloat key eps =
             Edis (Hedis.incrbyfloat (encodeKey key) eps) {-"~~."-}
 \end{spec}
 Notice the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
@@ -175,12 +175,12 @@ type StringOrNX  xs k =
 \label{fig:xxxOrNX}
 \end{figure}
 
-The \Edis{} counterpart of \texttt{LPUSH} and \texttt{LLEN} are therefore:\\ 
+The \Edis{} counterpart of \texttt{LPUSH} and \texttt{LLEN} are therefore:\\
 \begin{spec}
 lpush  :: (KnownSymbol k, Serialize a, ListOrNX xs k)
-       => Proxy k -> a -> 
+       => Proxy k -> a ->
           Edis xs (Set xs k (ListOf a)) (EitherReply Integer)
-lpush key val = 
+lpush key val =
           Edis (Hedis.lpush (encodeKey key) [encode val]) {-"~~,"-}
 
 llen  :: (KnownSymbol k, ListOrNX xs k)
@@ -191,7 +191,7 @@ Similarly, the type of |sadd|, a function we have talked about a lot,
 is given below:
 \begin{spec}
 sadd  :: (KnownSymbol k, Serialize a, SetOrNX xs k)
-      => Proxy k -> a -> 
+      => Proxy k -> a ->
          Edis xs (Set xs k (SetOf a)) (EitherReply Integer)
 sadd key val = Edis (Hedis.sadd (encodeKey key) [encode val]) {-"~~,"-}
 \end{spec}
@@ -200,7 +200,7 @@ To see a command with a more complex type, consider |setnx|, which
 uses the type-level function |If| defined in Section \ref{sec:type-fun}:
 \begin{spec}
 setnx  :: (KnownSymbol k, Serialize a)
-       => Proxy k -> a -> 
+       => Proxy k -> a ->
        Edis xs  (If (Member xs k) xs (Set xs k (StringOf a)))
                 (Either Reply Bool)
 setnx key val = Edis (Hedis.setnx (encodeKey key) (encode val)) {-"~~."-}
@@ -218,7 +218,7 @@ field/value pairs. The following commands assigns a hash to key \texttt{user}.
 The fields are \texttt{name}, \texttt{birthyear}, and \texttt{verified},
 respectively with values \texttt{banacorn}, \texttt{1992}, and \texttt{1}.
 \begin{Verbatim}[xleftmargin=.4in]
-redis> hmset user name banacorn 
+redis> hmset user name banacorn
        birthyear 1992 verified 1
 OK
 redis> hget user name
@@ -258,7 +258,9 @@ type family MemHash (xs :: [ (Symbol, *) ]) (k :: Symbol) (f :: Symbol) :: Bool 
     MemHash (TPar (k, HashOf hs   ) :- xs)  k f = Member hs f
     MemHash (TPar (k, x           ) :- xs)  k f = FALSE
     MemHash (TPar (l, y           ) :- xs)  k f = MemHash xs k f
+    {-"~~"-}
 \end{spec}
+\vspace{-1cm}
 \caption{Type-level operations for dictionaries with hashes.}
 \label{fig:xxxHash}
 \end{figure*}
@@ -277,12 +279,12 @@ hashes is more or less routine. For example, functions |hset| and |hget|
 are shown below. Note that, instead of |hmset| (available in \Hedis{}), we
 provide a function |hset| that assigns fields and values one pair at a time.
 \begin{spec}
-hset  :: (KnownSymbol k, KnownSymbol f, 
+hset  :: (KnownSymbol k, KnownSymbol f,
           Serialize a, HashOrNX xs k)
       => Proxy k -> Proxy f -> a
       -> Edis xs (SetHash xs k f (StringOf a)) (EitherReply Bool)
 hset key field val =
-  Edis (Hedis.hset (encodeKey key) 
+  Edis (Hedis.hset (encodeKey key)
        (encodeKey field) (encode val)) {-"~~,"-}
 
 
@@ -290,12 +292,12 @@ hget  :: (  KnownSymbol k, KnownSymbol f, Serialize a,
             StringOf a ~ GetHash xs k f)
       => Proxy k -> Proxy f -> Edis xs xs (EitherReply (Maybe a))
 hget key field =
-  Edis (Hedis.hget (encodeKey key) (encodeKey field) >>= 
+  Edis (Hedis.hget (encodeKey key) (encodeKey field) >>=
        decodeAsMaybe) {-"~~,"-}
 \end{spec}
-where 
+where
 \begin{spec}
-decodeAsMaybe :: Serialize a => (EitherReply (Maybe ByteString)) -> 
+decodeAsMaybe :: Serialize a => (EitherReply (Maybe ByteString)) ->
   Redis (EitherReply (Maybe a)) {-"~~,"-}
 \end{spec}
 using the function |decode|
@@ -355,11 +357,13 @@ start :: Edis NIL NIL ()
 start = Edis (return ()) {-"~~."-}
 \end{spec}
 
-\subsection{A Larger Example}
+\subsection{A Slightly Larger Example}
 
-We present a larger example as a summary. The task is to store a queue of
+We present a slightly larger example as a summary. The task is to store a queue of
 messages in \Redis{}. Messages are represented by a |ByteString| and an
-|Integer| identifier:
+|Integer| identifier:%
+\footnote{|Message| is made an instance of |Generic| in order to use the
+generic implementation of methods of |Serialize|.}
 \begin{spec}
 data Message = Msg ByteString Integer
                    deriving (Show, Generic) {-"~~,"-}
@@ -370,12 +374,12 @@ In the data store, the queue is represented by a list. Before pushing a message
 into the queue, we increment |counter|, a key storing a counter, and use it as the
 identifier of the message:
 \begin{spec}
-push  :: (StringOfIntegerOrNX xs "counter", 
-                     ListOrNX xs "queue")
-      => ByteString -> Edis xs (Set xs "queue" 
-                       (ListOf Message)) (EitherReply Integer)
-push msg =  incr kCounter
-    `bind`  \i -> lpush kQueue (Msg msg (fromRight i)) {-"~~,"-}
+push  :: (   StringOfIntegerOrNX xs "counter",
+             ListOrNX xs "queue")
+      => ByteString -> Edis xs (Set xs "queue"
+          (ListOf Message)) (EitherReply Integer)
+push msg =  incr kCounter `bind` \i ->
+            lpush kQueue (Msg msg (fromRight i)) {-"~~,"-}
 \end{spec}%​
 where |fromRight :: Either a b -> b| extracts the value wrapped by constructor
 |Right|, and the constraint |StringOfIntegerOrNX xs k| holds if either |k|
@@ -403,18 +407,12 @@ pop = rpop kQueue {-"~~,"-}
 
 rpop  :: (KnownSymbol k, Serialize a, Get xs k ~ ListOf a)
       => Proxy k -> Edis xs xs (EitherReply (Maybe a))
-rpop key = Edis (Hedis.rpop (encodeKey key) >>= 
+rpop key = Edis (Hedis.rpop (encodeKey key) >>=
            decodeAsMaybe) {-"~~."-}
 \end{spec}
-To get things going, the main program builds a connection with the \Redis{}
-server, runs an embedded program |prog|, and prints the result, which in this
-example is |"hello"|:
+%
+Our sample program is shown below:
 \begin{spec}
-main :: IO ()
-main = do  conn    <- connect defaultConnectInfo
-           result  <- runRedis conn (unEdis (start >>> prog))
-           print result {-"~~,"-}
-
 prog =  declare kCounter  (Proxy :: Proxy Integer)
    >>>  declare kQueue    (Proxy :: Proxy (ListOf Message))
    >>>  push "hello"
@@ -427,15 +425,27 @@ where the monadic sequencing operator |(>>>)| is defined by:
 m1 >>> m2 = m1 `bind` (\ _ -> m2) {-"~~."-}
 \end{spec}
 Use of |declare| in |prog| ensures that neither |"counter"| nor |"queue"| exist
-before the execution of |prog|, while |start| in |main| guarantees that the
-program is given a fresh run without previously defined keys at all. Haskell
-is able to infer the type of |prog|:
+before the execution of |prog|. The program simply stores two strings in |"queue"|, before extracting the first string. GHC is able to infer the type of |prog|:
 \begin{spec}
-prog :: Edis  NIL (TList (TPar ("counter", Integer), 
-              TPar("queue", ListOf Message)))
+prog :: Edis  NIL (  TList (TPar ("counter", Integer),
+                     {-"\quad\!\!\!"-} TPar("queue", ListOf Message)))
               (EitherReply (Maybe Message)) {-"~~."-}
 \end{spec}
 
+To get things going, the main program builds a connection with the \Redis{}
+server, runs |prog|, and prints the result:
+\begin{spec}
+main :: IO ()
+main = do  conn    <- connect defaultConnectInfo
+           result  <- runRedis conn (unEdis (start >>> prog))
+           print result {-"~~."-}
+\end{spec}
+The command |start| in |main| guarantees that the
+program is given a fresh run without previously defined keys at all.
+All type-level constraints in |start >>> prog| are stripped away
+by |unEdis|. The untyped program stored in |Edis|, of type |Redis (EitherReply (Maybe Message))|, is passed to the \Redis{} function
+|runRedis|, of type |Connection -> Redis a -> IO a|. In this case the output
+is |Right (Just "hello")|.
 
 % The following program increases the value of |"A"| as an integer, push the result of the increment to list |"L"|, and then pops it out:
 % \begin{spec}

@@ -7,7 +7,9 @@ we have designed a domain-specific embedded language \Edis{} which enforces
 typing disciplines that keep track of available keys and their types. The
 type of a command clearly specifies which keys must or must not present in
 the data store, what their types ought to be, as well as how the keys and types are updated after the execution. A program can be constructed only if it does
-not throw a runtime type error, and the type also serves as documentation of the
+not throw a runtime type error when it is run with a store whose status matches
+its precondition and when it is the sole client interacting with the store.
+The type also serves as documentation of the
 commands. We believe that it is a neat case study of application of type-level programming.
 
 \Redis{} identifies itself as a data structure store/server, rather than a

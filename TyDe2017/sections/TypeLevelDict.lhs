@@ -9,7 +9,8 @@ One of the challenges of statically ensuring type correctness of stateful
 languages is that the type of the value of a key can be altered by updating.
 In \Redis{}, one may delete an existing key and create it again by assigning to
 it a value of a different type. To ensure type correctness, we keep track of the
-types of all existing keys in a {\em dictionary} --- an associate list, or a
+types of all existing keys in a {\em dictionary}. A dictionary is
+a finite map, which can be represented by an associate list, or a
 list of pairs of keys and some encoding of types. For example, we may use the
 dictionary |[("A",Int), ("B", Char), ("C", Bool)]| to represent a
 predicate, or a constraint, stating that ``the keys in the data store are |"A"|,
@@ -59,9 +60,9 @@ constructor with a single quote, such as in |ZERO| and |SUC|, denotes that it
 is promoted.
 
 The situation of lists is similar: for all kinds |k|, |[k]| is also a kind. For
-all kinds |k|, |[]| is a type of kind |[k]|. Given a type |a| of kind |k| and a
-type |as| of kind |[k]|, |a : as| is again a type of kind |[k]|. Formally,
-|(:) :: k -> [k] -> [k]|. For example, |Int :- (Char :- (Bool :- NIL))| is a
+all kinds |k|, |NIL| is a type of kind |[k]|. Given a type |a| of kind |k| and a
+type |as| of kind |[k]|, |a :- as| is again a type of kind |[k]|. Formally,
+|(:-) :: k -> [k] -> [k]|. For example, |Int :- (Char :- (Bool :- NIL))| is a
 type having kind |[*]| --- it is a list of (lifted) types. The optional quote
 denotes that the constructors are promoted. The same list can be denoted by a
 syntax sugar |TList (Int, Char, Bool)|.
@@ -80,8 +81,8 @@ With all of these ingredients, we are ready to build our dictionaries, or
 type-level associate lists:
 \begin{spec}
 type DictEmpty = NIL {-"~~,"-}
-type Dict0 = TList (TPar ("key", Bool)) {-"~~,"-}
-type Dict1 = TList (TPar ("A", Int), TPar ("B", "A")) {-"~~."-}
+type Dict0 = TList {-"~"-} (TPar ("key", Bool)) {-"~~,"-}
+type Dict1 = TList {-"~"-} (TPar ("A", Int), {-"~"-}TPar ("B", "A")) {-"~~."-}
 \end{spec}
 All the entities defined above are types, where |Dict0| has kind |[(Symbol,
 *)]|. In |Dict1|, while |Int| has kind |*| and |"A"| has kind |Symbol|, the former kind subsumes the later. Thus |Dict1| also has kind |[(Symbol, *)]|.
@@ -139,7 +140,7 @@ type family If (c :: Bool) (t :: a) (f :: a) :: a where
 % \end{minipage}
 % }
 
-As a remark, type families in Haskell come in many flavors. One can define families of |data| types, as well as families of |type| synonyms. They can appear
+As a remark, type families in GHC come in many flavors. One can define families of |data| types, as well as families of |type| synonyms. They can appear
 inside type classes~\cite{tfclass,tfsynonym} or at toplevel. Top-level type families can be open~\cite{tfopen} or closed~\cite{tfclosed}. The flavor we
 choose is top-level, closed type synonym families, since it allows overlapping
 instances, and since we need none of the extensibility provided by open type
@@ -180,26 +181,28 @@ dictionary.
 \begin{figure}[t]
 \begin{spec}
 -- inserts or updates an entry
-type family Set  (xs :: [(Symbol, *)]) (k :: Symbol) (x :: *) :: 
+type family Set  (xs :: [(Symbol, *)]) (k :: Symbol) (x :: *) ::
             [(Symbol, *)] where
     Set NIL                 k x = TList (TPar (k, x))
     Set (TPar(k, y) :- xs)  k x = TPar (k, x)  :- xs
     Set (TPar(t, y) :- xs)  k x = TPar (t, y)  :- Set xs k x
 
 -- removes an entry
-type family Del  (xs :: [(Symbol, *)]) (k :: Symbol) :: 
+type family Del  (xs :: [(Symbol, *)]) (k :: Symbol) ::
             [(Symbol, *)] where
-    Del Nil                  k = Nil
+    Del NIL                  k = NIL
     Del (TPar (k, y) :- xs)  k = xs
     Del (TPar (t, y) :- xs)  k = TPar (t, y) :- Del xs k
 
 -- membership
-type family Member (xs :: [(Symbol, *)]) (k :: Symbol) :: 
+type family Member (xs :: [(Symbol, *)]) (k :: Symbol) ::
             Bool where
-    Member Nil                  k = False
-    Member (TPar(k, x) :- xs)   k = True
+    Member NIL                  k = FALSE
+    Member (TPar(k, x) :- xs)   k = TRUE
     Member (TPar(t, x) :- xs)   k = Member xs k
+    {-"~~"-}
 \end{spec}
+\vspace{-1cm}
 \caption{Some operations on type-level dictionaries.}
 \label{fig:dict-operations}
 \end{figure}

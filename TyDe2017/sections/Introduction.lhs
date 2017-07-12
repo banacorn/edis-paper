@@ -6,13 +6,13 @@
 \label{sec:introduction}
 
 \Redis{}\footnote{\url{https://redis.io}} is an open source, in-memory data
-structure store that can be used as database, cache, and message broker, etc.
+structure store that can be used as database, cache, and message broker.
 A \Redis{} data store can be thought of as a set of key-value pairs. The value
 can be a string, a list of strings, a set of strings, or a hash table of
 strings, etc. However, string is the only primitive datatype. Numbers, for
 example, are serialized to strings before being saved in the data store, and
 parsed back to numbers to be manipulated with. While the concept is simple,
-\Redis{} is used as an essential component in a number of popular, matured services, including Twitter, GitHub, Weibo, StackOverflow, and Flickr, etc.
+\Redis{} is used as an essential component in a number of popular, matured services, including Twitter, GitHub, Weibo, StackOverflow, and Flickr.
 
 For an example, consider the following sequence of commands, entered through the
 interactive interface of \Redis{}. The keys \texttt{some-set} and
@@ -48,10 +48,10 @@ program = do
     sadd "another-set" ["a", "b", "c"]
     sinter ["some-set", "another-set"] {-"~~."-}
 \end{spec}
-The function 
+The function
 \begin{spec}
-sadd :: ByteString -> [ByteString] -> 
-        Redis (Either Reply Integer) 
+sadd :: ByteString -> [ByteString] ->
+        Redis (Either Reply Integer)
 \end{spec}
 takes a key and a list of values as arguments, and returns a
 \Redis{} computation yielding |Integer|. Keys and values, being nothing but
@@ -115,7 +115,7 @@ program = do
 Such a programming model is certainly very error-prone. Working within Haskell,
 a host language with a strong typing system, one naturally wishes to build a
 domain-specific embedded language (DSEL) that exploits the rich type system
-of Haskell to not only ensure the absence of \Redis{} type errors, but also
+of Haskell to not only ensure the absence of \Redis{} type errors (at least in the simplified situation where there is one client accessing the store), but also
 provides better documentations. We wish to be sure that a program calling
 \texttt{INCR}, for example, can be type checked only if we can statically
 guarantee that the value to be accessed is indeed an integer. We wish to see
@@ -132,12 +132,12 @@ need to encode variable bindings with {\em type-level} lists and strings. And
 to manipulate the dictionary, we applied various type-level programming
 techniques. To summarize our contributions:
 \begin{itemize}
-\item We present \Edis{}, a statically typed domain-specific language embedded in Haskell and built on \Hedis{}. Serializable Haskell datatypes are
+\item We present \Edis{}, a statically typed domain-specific language embedded in Haskell (with extension provided by the Glasgow Haskell Compiler) and built on \Hedis{}. Serializable Haskell datatypes are
 automatically converted before being written to \Redis{} data store. Available
 keys and their types are kept track of in type-level dictionaries. The types of
 embedded commands state clearly their preconditions and postconditions on the
 available keys and types, and a program is allowed to be constructed only if
-it is guaranteed not to fail with a type error.
+it is guaranteed not to fail with a type error, assuming that it is the only client accessing the store.
 %
 \item We demonstrate the use of various type-level programming techniques,
 including data kinds, singleton types and proxies, closed type families, etc.,
