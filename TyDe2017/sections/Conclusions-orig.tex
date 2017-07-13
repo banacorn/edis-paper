@@ -1,0 +1,35 @@
+
+\section{Conclusions and Related Work}
+\label{sec:conclusions}
+
+By exploiting various recent extensions and type-level programming techniques,
+we have designed a domain-specific embedded language \Edis{} which enforces
+typing disciplines that keep track of available keys and their types. The
+type of a command clearly specifies which keys must or must not present in
+the data store, what their types ought to be, as well as how the keys and types are updated after the execution. A program can be constructed only if it does
+not throw a runtime type error, and the type also serves as documentation of the
+commands. We believe that it is a neat case study of application of type-level programming.
+
+\Redis{} identifies itself as a data structure store/server, rather than a
+database. Nevertheless, there has been attempts to design DSELs for relational
+databases that guarantee all queries made are safe. Among them, {\sc HaskellDB}~\cite{haskelldb,haskelldbimproved} dynamically generates, from monad comprehensions, SQL queries to be executed on ODBC database servers.
+With the expressiveness of dependent types, Oury and Swierstra~\cite{pi}
+build a DSEL in Agda for relational algebra. Eisenberg and
+Weirich~\cite{singletons} ported the result to Haskell using singleton types, after GHC introduced more features facilitating type-level programming.
+
+None of the type-level programming techniques we used in this paper are new.
+Indexed monads (also called parameterized monads) have been introduced by
+Atkey~\cite{indexedmonad}. McBride~\cite{kleisli} showed how to construct
+indexed free-monads from Hoare Logic specifications. Kiselyov et
+al~\cite{typefun} used indexed monads to track the locks held among a given
+finite set. The same paper also demonstrated implementation of a variety of
+features including memoization, generic maps, session types, typed
+\texttt{printf} and \texttt{sprintf}, etc., by type-level programming.
+Before the introduction of type families, Kiselyov and
+Shan~\cite{staticresources} used type classes and functional dependencies to
+implement type-level functions, and showed that they are sufficient to track
+resources in device drivers.
+
+Lindley and McBride~\cite{phasedistinction} provided a thorough analysis and summary of the dependent-type-like features currently in Haskell, and
+compared them with dependently typed languages without phase distinction such as Agda. It turns out that GHC's constraint solver works surprisingly well as an
+automatic theorem prover.

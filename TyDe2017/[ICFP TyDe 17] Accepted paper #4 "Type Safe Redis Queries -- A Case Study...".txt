@@ -1,0 +1,157 @@
+From: "ICFP TyDe 17 HotCRP" <noreply@icfp-tyde17.hotcrp.com>
+Subject: [ICFP TyDe 17] Accepted paper #4 "Type Safe Redis Queries -- A Case Study..."
+Date: 29 June 2017 at 12:45:18 AM GMT+8
+To: Ting-Yan Lai <banacorn@gmail.com>, Shin-Cheng Mu <scm@iis.sinica.edu.tw>, Tyng-Ruey Chuang <trc@iis.sinica.edu.tw>
+Cc: Sam.Lindley@ed.ac.uk, yorgey@hendrix.edu
+Reply-To: Sam.Lindley@ed.ac.uk, yorgey@hendrix.edu
+
+Dear authors,
+
+The 2017 ACM SIGPLAN Workshop on Type-driven Development (ICFP TyDe 17)
+program committee is delighted to inform you that your paper #4 has been
+accepted to appear in the workshop.
+
+      Title: Type Safe Redis Queries -- A Case Study of Type-Level
+             Programming in Haskell
+    Authors: Ting-Yan Lai (Institute of Information Science, Academia
+             Sinica)
+             Tyng-Ruey Chuang (Institute of Information Science, Academia
+             Sinica)
+             Shin-Cheng Mu (Institute of Information Science, Academia
+             Sinica)
+ Paper site: https://icfp-tyde17.hotcrp.com/paper/4?cap=04aSZRLo_dFSVA
+
+Congratulations!
+
+Reviews on your paper are appended to this email. The submissions site also
+has the paper's reviews.
+
+Sam and Brent
+
+===========================================================================
+                         ICFP TyDe 17 Review #4A
+---------------------------------------------------------------------------
+Paper #4: Type Safe Redis Queries -- A Case Study of Type-Level Programming
+         in Haskell
+---------------------------------------------------------------------------
+
+                     Overall merit: C. Weak reject
+                        Confidence: X. I am an expert in this area
+
+                        ===== Paper summary =====
+
+The paper describes EDIS, a wrapper-library that extends the Haskell library HEDIS (a data structure store) with stronger static type safety. The goal is to prevent runtime type errors caused by using the same key for values of different types. Several advanced type system extensions used in the library are explained, and the paper aims to provide a case study of applying these techniques (data type promotion, type level functions using closed type families, singleton types). The paper includes a small "Hello World"-style example of using EDIS.
+
+                     ===== Comments for author =====
+
+The paper is well-written although it can be improved here and there. The contributions are not very novel, it is even referred to as "(yet another) example of encoding effects and constraints of programs in types". It could still be useful as a case study, but in my opinion it would have to include at least a more convincing example and solve or circumvent the problem of not having dynamically declared keys. 
+
+A problem in my opinion is that the paper does not always do a good job in explaining things for those not familiar with REDIS/HEDIS. Even type-level programming in Haskell could be better explained.
+
+High-level comments:
+
+- In section 4.6, you write that you provide "a larger example", but it is in fact a tiny example. And unfortunately that is the only example where you combine the primitive combinators you define in any way. Also you do not compare your program to the untyped (Hedis) equivalent. 
+
+- I find the central aim of the case study a bit unclear. Are you proving that an embedding like EDIS is possible, or arguing that an embedding like EDIS is practically useful for programmers? The former is not very novel and the latter is not really demonstrated by your paper. 
+
+- In the introduction you claim that you "ensure the absence of REDIS type errors", and later that constructed programs are "guaranteed not to fail with type errors". This appears to be slightly exaggerated since errors can still occur if the same REDIS-store is used or has been used by other applications. Also, there is no formal argument that this guarantee holds even within a single program using only the EDIS combinators (a small mistake in a type signature of any of the many combinators you introduce could easily result in runtime type errors). 
+
+- It seems like the restriction of having only statically known keys is a severe limitation. Most notably, it seems to prevent using REDIS for map data structures and there is no convenient way in EDIS to have a map e.g. from user names to timestamps (normally done with a Hash I presume). 
+
+- You introduce type level associate lists as a good representation of dictionaries, but clearly what you need is a type level map (and the list is just an easy way to implement it). The operations you provide are all map-operations and using list operations directly on your dictionaries would be bad (but entirely possible?). Is it possible to have some kind of encapsulation to prevent users from writing dictionaries where the same key is mapped to multiple types (as you would on the value level)?
+
+- It would have been interesting to know what kind of error messages one gets if a program is rejected. Are they useful at all for debugging? Is there any relevant research on improving error messages resulting from type level computations?
+
+Minor issues:
+
+- Why is dependent types a keyword when this paper doesn't really use them?
+
+- Try not to use "etc" as much as you do.
+
+- Not sure sentences like "k presents in xs" or "k does not present in xs" are correct English.
+
+- There are a few overfull lines here and there, please fix this.
+
+- You are not very precise about what is standard Haskell and what features are provided by extensions. You use phrasings like "in Haskell" in some places where it should say "in GHC" or similar. Alternatively you could add an exclaimer early on saying that by Haskell you mean Haskell and the following extensions : ...
+
+- It seems pretty unfortunate to have "Either Result a" everywhere, especially since the Left alternative should essentially never happen and since avoiding this kind of clutter is one of the most common  usages of a monad. Still, extending the monad to avoid it might distract from the central points of the paper. 
+
+- In 3.1 you use the built in list type as an example. I understand this is because you use it later, but using [] as both a type constructor, a (promoted) type and a value probably confuses readers who are not Haskell experts. 
+
+- In 3.1 (and elsewhere) you should perhaps stick to always using ' for promoted constructors, and just mention that it is optional.
+
+- In 3.1 when using ', consider always having a space in front of it. Bool':'[] looks a lot like Bool ':' [] to a programmer used to using '' for character literals, and Int': looks a lot like you have a type called Int' to a Haskell programmer. 
+
+- In Fig.1 you use Nil instead of [].
+
+- You do not cite a reference when introducing singleton types. 
+
+- The REDIS incr operation seems to work for nonexistent keys (setting them to "0"), and your example relies on this yet it is not reflected in the type of your incr function (your combinator requires the key to be previously declared). 
+
+- 4.6: Consider mentioning the purpose of deriving generic.
+
+- 4.6: You claim that running main prints "hello", but isn't the actual output something like Right (Just (Msg "hello" 0))? Even if I'm mistaken, you may want to clarify and provide the type for result. 
+
+
+Random suggestions (some are not related to the paper text):
+
+- Sec 5: A possible solution for get could be to have a version that takes a default value, so get would be something like ... => Proxy k -> a -> Edis xs xs (Either R a)
+
+- Sec 5: I can see how variable number of keys is problematic, but what about variable number of values (like sadd)? It looks like sadd could easily be modified to allow a list of values, but maybe I am mistaken. 
+
+- Sec 5: It seems like some workarounds may be possible to allow arbitrarily many keys. For instance you could add a function to declare a key prefix, with the intention of declaring all keys that start with that prefix as a certain type. When using operations on these values both the prefix (statically known) and the suffix (dynamic) must be provided. Of course this might add quite a bit of extra complexity. An even simpler solution: Introduce a type MapOf key val, that is internally represented by a hash where all fields have the same type (thus implementing a general purpose map). Thirdly, you could add a way to dynamically generate fresh names (seems tricky though).
+
+===========================================================================
+                         ICFP TyDe 17 Review #4B
+---------------------------------------------------------------------------
+Paper #4: Type Safe Redis Queries -- A Case Study of Type-Level Programming
+         in Haskell
+---------------------------------------------------------------------------
+
+                     Overall merit: B. Weak accept
+                        Confidence: Y. I am knowledgeable in this area,
+                                       but not an expert
+
+                        ===== Paper summary =====
+
+The paper reports the design and implementation of Edis, a DSL embedded in Haskell to manipulate the database system REDIS.  The challenge is how to keep track of type information during effectful computations including strong update, and the paper solves it using a number of type-level programming techniques in Haskell, including indexed monads, indexed type families and so on. The paper explains quite detail of the implementation.
+
+                     ===== Comments for author =====
+
+I think this is an interesting paper of type-level programming in Haskell. 
+Although the paper is a case study, rather than an original technical paper to present new ideas and/or techniques, the paper is easy to follow and fun to read, to understand how type-level programming in Haskell works, and how it helps implement a practical software.  The uses of indexed monad and type-level functions are natural, though not very surprising.  The paper not only explains the details of implementation of Edis, but also a number of (small) illustrative examples of Edis.
+
+A few problems with this reviewer are:
+
+1. As a case study paper, I would like to see how Edis performs well, how easy/difficult Edis programming is, and whether the DSL is actually used, or remains an experimental language. The present paper does not report such aspects.  Also, it is not clear if Edis covers all or most of the features of REDIS functions.  As the minimum, adding the authors' experience of Edis programming to this paper would be easy and doable. (The authors write in the paper that "This paper discusses ... the experiences we learned from building such a language, EDIS.")
+
+2. I am curious to know whether the type error messages (of Haskell) are helpful in the authors' case, as the paper extensively uses type-level programming. If a program typechecks, it's fine, but if it doesn't typecheck, the programmer may have to spend a huge amount of time to debug the type error.
+
+In summary, I like and appreciate the paper, though its contribution is marginal and there is some room for improvement.  I thus recommend weak accept.
+
+===========================================================================
+                         ICFP TyDe 17 Review #4C
+---------------------------------------------------------------------------
+Paper #4: Type Safe Redis Queries -- A Case Study of Type-Level Programming
+         in Haskell
+---------------------------------------------------------------------------
+
+                     Overall merit: B. Weak accept
+                        Confidence: Y. I am knowledgeable in this area,
+                                       but not an expert
+
+                        ===== Paper summary =====
+
+This paper presents a precisely-typed interface to the Redis data structure store.
+
+                     ===== Comments for author =====
+
+I enjoyed reading this paper.  The exposition is clear and well-structured, and the design combines several modern Haskell features and programming patterns to nice effect.  Overall, I think the paper works well as a modern twist on the typed database interface introduced in the venerable Haskell/DB paper.
+
+My main reservation is that there's not a lot of evidence that the typed interface scales up well.  It'd be much easier to convince the reader that your approach is practical if you had a reasonably sized example of an existing application ported to from REDIS to EDIS, or even of a freshly-written application.  It's clear enough that the types work at a small scale, but do types tend to become unmanageable as data grows?  or do abstraction and polymorphism save the day?
+
+I wonder if the limitation on dynamic key generation is really insurmountable.  First-class polymorphism (i.e. "rank-N types") allows generation of fresh types at runtime -- be it possible to put that facility to use to generate new keys?  The ST monad or the "brands" used in Kiselyov and Shan's "Lightweight Static Capabilities" might serve as inspiration here.  It would also be helpful to know how much of a limitation the lack of dynamic key generation is in practice.
+
+It'd be interesting to compare your membership constraints with other type-level encodings of sets, e.g. the approach taken by Orchard and Petricek in their embedding of effect systems into Haskell.
+
+
