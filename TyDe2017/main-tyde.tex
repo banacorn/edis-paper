@@ -1,7 +1,7 @@
-\documentclass[sigplan]{acmart}
+\documentclass[sigplan, letterpaper]{acmart}
 \settopmatter{printfolios=true}
 
-\makeatletter\if@ACM@journal\makeatother
+%\makeatletter\if@ACM@journal\makeatother
 %% Journal information (used by PACMPL format)
 %% Supplied to authors by publisher for camera-ready submission
 \acmJournal{PACMPL}
@@ -21,15 +21,17 @@
 %\usepackage{color}
 \usepackage{xcolor}
 \usepackage{url}
-\usepackage{mathptmx}
+%\usepackage{mathptmx}
 \usepackage{doubleequals}
 %\usepackage{makeidx}  % allows for indexgeneration
 \usepackage{textcomp} % for single quote
 \usepackage{fancyvrb} % for indented verbatim
+\usepackage{flushend} % balance columns on last page
 
 \input{Preamble}
 \input{macro}
 
+\pagestyle{empty} %no page number
 \setlength{\mathindent}{10pt}
 
 \begin{document}
@@ -113,9 +115,10 @@ guarantees that type errors cannot happen for a class of \Redis{} programs.
 \ccsdesc[300]{Software and its engineering~Domain specific languages}
 \ccsdesc[300]{Information systems~Query languages}
 
-\keywords{Haskell, Redis, Type-Level Programming Type Safety, Key-Value Store}
+\keywords{Haskell, Redis, Type-Level Programming, Type Safety, Key-Value Store}
 
 \maketitle
+\thispagestyle{empty}
 
 \input{sections/Introduction}
 \input{sections/IndexedMonads}
