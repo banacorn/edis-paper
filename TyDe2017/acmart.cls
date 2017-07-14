@@ -1261,7 +1261,7 @@ Computing Machinery]
   %  this article, or to allow others to do so, for Government purposes
   %  only.
    To the extent possible under law, the authors have waived all copyright
-   and related or neighboring rights to this paper.  For the avoidance of
+   and related or neighboring rights to this paper.  For avoidance of
    doubt, this work is released under the CC0 Public Domain Dedication
    (\url{http://creativecommons.org/publicdomain/zero/1.0/}).
    Anyone can copy, modify, distribute and perform this work, even for

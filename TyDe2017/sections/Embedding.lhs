@@ -135,8 +135,8 @@ type of |incrbyfloat| works in a similar way.
 \label{sec:disjunctive-constraints}
 
 Recall, from Section \ref{sec:introduction}, that commands \texttt{LPUSH key
-val} and \texttt{LLEN key} succeed either when |key| presents in the
-data store and is assigned a list, or when |key| does not present at all.
+val} and \texttt{LLEN key} succeed either when |key| appears in the
+data store and is assigned a list, or when |key| does not appear at all.
 What we wish to have in their constraint is thus a predicate equivalent to |Get xs k == ListOf a |||| not (Member xs k)|. \hide{In fact, many \Redis{} commands
 are invokable under such ``well-typed, or non-existent'' precondition.}
 
@@ -383,8 +383,8 @@ push msg =  incr kCounter `bind` \i ->
 \end{spec}%​
 where |fromRight :: Either a b -> b| extracts the value wrapped by constructor
 |Right|, and the constraint |StringOfIntegerOrNX xs k| holds if either |k|
-presents in |xs| and is converted from an |Integer|, or |k| does not
-present in |xs|. For brevity, the proxies are given names: \\
+appears in |xs| and is converted from an |Integer|, or |k| does not
+appear in |xs|. For brevity, the proxies are given names: \\
 % \noindent{\centering %\small
 % \begin{minipage}[b]{0.4\linewidth}
 \begin{spec}
