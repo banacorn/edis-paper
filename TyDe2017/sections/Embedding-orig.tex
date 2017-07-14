@@ -1,0 +1,1043 @@
+%% ODER: format ==         = "\mathrel{==}"
+%% ODER: format /=         = "\neq "
+%
+%
+\makeatletter
+\@ifundefined{lhs2tex.lhs2tex.sty.read}%
+  {\@namedef{lhs2tex.lhs2tex.sty.read}{}%
+   \newcommand\SkipToFmtEnd{}%
+   \newcommand\EndFmtInput{}%
+   \long\def\SkipToFmtEnd#1\EndFmtInput{}%
+  }\SkipToFmtEnd
+
+\newcommand\ReadOnlyOnce[1]{\@ifundefined{#1}{\@namedef{#1}{}}\SkipToFmtEnd}
+\usepackage{amstext}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\DeclareFontFamily{OT1}{cmtex}{}
+\DeclareFontShape{OT1}{cmtex}{m}{n}
+  {<5><6><7><8>cmtex8
+   <9>cmtex9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmtex10}{}
+\DeclareFontShape{OT1}{cmtex}{m}{it}
+  {<-> ssub * cmtt/m/it}{}
+\newcommand{\texfamily}{\fontfamily{cmtex}\selectfont}
+\DeclareFontShape{OT1}{cmtt}{bx}{n}
+  {<5><6><7><8>cmtt8
+   <9>cmbtt9
+   <10><10.95><12><14.4><17.28><20.74><24.88>cmbtt10}{}
+\DeclareFontShape{OT1}{cmtex}{bx}{n}
+  {<-> ssub * cmtt/bx/n}{}
+\newcommand{\tex}[1]{\text{\texfamily#1}}	% NEU
+
+\newcommand{\Sp}{\hskip.33334em\relax}
+
+
+\newcommand{\Conid}[1]{\mathit{#1}}
+\newcommand{\Varid}[1]{\mathit{#1}}
+\newcommand{\anonymous}{\kern0.06em \vbox{\hrule\@width.5em}}
+\newcommand{\plus}{\mathbin{+\!\!\!+}}
+\newcommand{\bind}{\mathbin{>\!\!\!>\mkern-6.7mu=}}
+\newcommand{\rbind}{\mathbin{=\mkern-6.7mu<\!\!\!<}}% suggested by Neil Mitchell
+\newcommand{\sequ}{\mathbin{>\!\!\!>}}
+\renewcommand{\leq}{\leqslant}
+\renewcommand{\geq}{\geqslant}
+\usepackage{polytable}
+
+%mathindent has to be defined
+\@ifundefined{mathindent}%
+  {\newdimen\mathindent\mathindent\leftmargini}%
+  {}%
+
+\def\resethooks{%
+  \global\let\SaveRestoreHook\empty
+  \global\let\ColumnHook\empty}
+\newcommand*{\savecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\savecolumns[#1]}}
+\newcommand*{\restorecolumns}[1][default]%
+  {\g@addto@macro\SaveRestoreHook{\restorecolumns[#1]}}
+\newcommand*{\aligncolumn}[2]%
+  {\g@addto@macro\ColumnHook{\column{#1}{#2}}}
+
+\resethooks
+
+\newcommand{\onelinecommentchars}{\quad-{}- }
+\newcommand{\commentbeginchars}{\enskip\{-}
+\newcommand{\commentendchars}{-\}\enskip}
+
+\newcommand{\visiblecomments}{%
+  \let\onelinecomment=\onelinecommentchars
+  \let\commentbegin=\commentbeginchars
+  \let\commentend=\commentendchars}
+
+\newcommand{\invisiblecomments}{%
+  \let\onelinecomment=\empty
+  \let\commentbegin=\empty
+  \let\commentend=\empty}
+
+\visiblecomments
+
+\newlength{\blanklineskip}
+\setlength{\blanklineskip}{0.66084ex}
+
+\newcommand{\hsindent}[1]{\quad}% default is fixed indentation
+\let\hspre\empty
+\let\hspost\empty
+\newcommand{\NB}{\textbf{NB}}
+\newcommand{\Todo}[1]{$\langle$\textbf{To do:}~#1$\rangle$}
+
+\EndFmtInput
+\makeatother
+%
+%
+%
+%
+%
+%
+% This package provides two environments suitable to take the place
+% of hscode, called "plainhscode" and "arrayhscode". 
+%
+% The plain environment surrounds each code block by vertical space,
+% and it uses \abovedisplayskip and \belowdisplayskip to get spacing
+% similar to formulas. Note that if these dimensions are changed,
+% the spacing around displayed math formulas changes as well.
+% All code is indented using \leftskip.
+%
+% Changed 19.08.2004 to reflect changes in colorcode. Should work with
+% CodeGroup.sty.
+%
+\ReadOnlyOnce{polycode.fmt}%
+\makeatletter
+
+\newcommand{\hsnewpar}[1]%
+  {{\parskip=0pt\parindent=0pt\par\vskip #1\noindent}}
+
+% can be used, for instance, to redefine the code size, by setting the
+% command to \small or something alike
+\newcommand{\hscodestyle}{}
+
+% The command \sethscode can be used to switch the code formatting
+% behaviour by mapping the hscode environment in the subst directive
+% to a new LaTeX environment.
+
+\newcommand{\sethscode}[1]%
+  {\expandafter\let\expandafter\hscode\csname #1\endcsname
+   \expandafter\let\expandafter\endhscode\csname end#1\endcsname}
+
+% "compatibility" mode restores the non-polycode.fmt layout.
+
+\newenvironment{compathscode}%
+  {\par\noindent
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed\)%
+   \par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\compaths}{\sethscode{compathscode}}
+
+% "plain" mode is the proposed default.
+% It should now work with \centering.
+% This required some changes. The old version
+% is still available for reference as oldplainhscode.
+
+\newenvironment{plainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\hspre\(\let\hspost\)%
+   \pboxed}%
+  {\endpboxed%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newenvironment{oldplainhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+% Here, we make plainhscode the default environment.
+
+\newcommand{\plainhs}{\sethscode{plainhscode}}
+\newcommand{\oldplainhs}{\sethscode{oldplainhscode}}
+\plainhs
+
+% The arrayhscode is like plain, but makes use of polytable's
+% parray environment which disallows page breaks in code blocks.
+
+\newenvironment{arrayhscode}%
+  {\hsnewpar\abovedisplayskip
+   \advance\leftskip\mathindent
+   \hscodestyle
+   \let\\=\@normalcr
+   \(\parray}%
+  {\endparray\)%
+   \hsnewpar\belowdisplayskip
+   \ignorespacesafterend}
+
+\newcommand{\arrayhs}{\sethscode{arrayhscode}}
+
+% The mathhscode environment also makes use of polytable's parray 
+% environment. It is supposed to be used only inside math mode 
+% (I used it to typeset the type rules in my thesis).
+
+\newenvironment{mathhscode}%
+  {\parray}{\endparray}
+
+\newcommand{\mathhs}{\sethscode{mathhscode}}
+
+% texths is similar to mathhs, but works in text mode.
+
+\newenvironment{texthscode}%
+  {\(\parray}{\endparray\)}
+
+\newcommand{\texths}{\sethscode{texthscode}}
+
+% The framed environment places code in a framed box.
+
+\def\codeframewidth{\arrayrulewidth}
+\RequirePackage{calc}
+
+\newenvironment{framedhscode}%
+  {\parskip=\abovedisplayskip\par\noindent
+   \hscodestyle
+   \arrayrulewidth=\codeframewidth
+   \tabular{@{}|p{\linewidth-2\arraycolsep-2\arrayrulewidth-2pt}|@{}}%
+   \hline\framedhslinecorrect\\{-1.5ex}%
+   \let\endoflinesave=\\
+   \let\\=\@normalcr
+   \(\pboxed}%
+  {\endpboxed\)%
+   \framedhslinecorrect\endoflinesave{.5ex}\hline
+   \endtabular
+   \parskip=\belowdisplayskip\par\noindent
+   \ignorespacesafterend}
+
+\newcommand{\framedhslinecorrect}[2]%
+  {#1[#2]}
+
+\newcommand{\framedhs}{\sethscode{framedhscode}}
+
+% The inlinehscode environment is an experimental environment
+% that can be used to typeset displayed code inline.
+
+\newenvironment{inlinehscode}%
+  {\(\def\column##1##2{}%
+   \let\>\undefined\let\<\undefined\let\\\undefined
+   \newcommand\>[1][]{}\newcommand\<[1][]{}\newcommand\\[1][]{}%
+   \def\fromto##1##2##3{##3}%
+   \def\nextline{}}{\) }%
+
+\newcommand{\inlinehs}{\sethscode{inlinehscode}}
+
+% The joincode environment is a separate environment that
+% can be used to surround and thereby connect multiple code
+% blocks.
+
+\newenvironment{joincode}%
+  {\let\orighscode=\hscode
+   \let\origendhscode=\endhscode
+   \def\endhscode{\def\hscode{\endgroup\def\@currenvir{hscode}\\}\begingroup}
+   %\let\SaveRestoreHook=\empty
+   %\let\ColumnHook=\empty
+   %\let\resethooks=\empty
+   \orighscode\def\hscode{\endgroup\def\@currenvir{hscode}}}%
+  {\origendhscode
+   \global\let\hscode=\orighscode
+   \global\let\endhscode=\origendhscode}%
+
+\makeatother
+\EndFmtInput
+%
+
+\ReadOnlyOnce{Formatting.fmt}%
+\makeatletter
+
+\let\Varid\mathit
+\let\Conid\mathsf
+
+\def\commentbegin{\quad\{\ }
+\def\commentend{\}}
+
+\newcommand{\ty}[1]{\Conid{#1}}
+\newcommand{\con}[1]{\Conid{#1}}
+\newcommand{\id}[1]{\Varid{#1}}
+\newcommand{\cl}[1]{\Varid{#1}}
+\newcommand{\opsym}[1]{\mathrel{#1}}
+
+\newcommand\Keyword[1]{\textbf{\textsf{#1}}}
+\newcommand\Hide{\mathbin{\downarrow}}
+\newcommand\Reveal{\mathbin{\uparrow}}
+
+
+%% Paper-specific keywords
+
+
+\makeatother
+\EndFmtInput
+
+\section{Embedding \Hedis{} Commands}
+\label{sec:embedding-commands}
+
+Having the indexed monads and type-level dictionaries, in this section we
+present our embedding of \Hedis{} commands into \Edis{}, while introducing
+necessary concepts when they are used.
+
+\subsection{Proxies and Singleton Types}
+\label{sec:proxy-key}
+
+The \Hedis{} function \ensuremath{\Varid{del}\mathbin{::}[\mskip1.5mu \Conid{ByteString}\mskip1.5mu]\to \Conid{Redis}\;(\Conid{R} \uplus \Conid{Integer})} takes a list of keys (encoded to \ensuremath{\Conid{ByteString}}) and removes the entries having those
+keys in the database. For some reason to be explained later, we consider an \Edis{}
+counterpart that takes only one key. A first attempt may lead to something like
+the following:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}\mathbin{::}\Conid{String}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}~\mathbin{?})\;(\Conid{R} \uplus \Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.del}\;[\mskip1.5mu \Varid{encode}\;\Varid{key}\mskip1.5mu])~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+where the function \ensuremath{\Varid{encode}} converts \ensuremath{\Conid{String}} to \ensuremath{\Conid{ByteString}}. At term-level,
+our \ensuremath{\Varid{del}} merely calls \ensuremath{\Varid{\Conid{Hedis}.del}}. At type-level, if the status of the database
+before \ensuremath{\Varid{del}} is called meets the constraint represented by the dictionary
+\ensuremath{\Varid{xs}}, the status afterwards should meet the constraint \ensuremath{\Conid{Del}\;\Varid{xs}~\mathbin{?}}. The question, however, is what to fill in place of the question mark. It cannot be
+\ensuremath{\Conid{Del}\;\Varid{xs}\;\Varid{key}}, since \ensuremath{\Varid{key}} is a runtime value and not a type. How do we smuggle
+a runtime value to type-level?
+
+In a language with phase distinction like Haskell, it is certainly impossible
+to pass the value of \ensuremath{\Varid{key}} to the type checker if it truly is a runtime value,
+for example, a string read from the user. If the value of \ensuremath{\Varid{key}} can be
+determined statically, however, {\em singleton types} can be used to represent a
+type as a value, thus build a connection between the two realms.
+
+A singleton type is a type that has only one term. When the term is built, it
+carries a type that can be inspected by the type checker. The term can be
+thought of as a representative of its type at the realm of runtime values. For
+our purpose, we will use the following type \ensuremath{\Conid{Proxy}}:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{Proxy}\;\Varid{t}\mathrel{=}\Conid{Proxy}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+For every type \ensuremath{\Varid{t}}, \ensuremath{\Conid{Proxy}\;\Varid{t}} is a type that has only one term: \ensuremath{\Conid{Proxy}}.%
+\footnote{While giving the same name to both the type and the term can be very
+confusing, it is unfortunately a common practice in the Haskell community.}
+To call \ensuremath{\Varid{del}}, instead of passing a key as a \ensuremath{\Conid{String}} value, we give it a proxy
+with a specified type:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34})~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+where \ensuremath{\text{\tt \char34 A\char34}} is not a value, but a string lifted to a type (of kind \ensuremath{\Conid{Symbol}}).
+Now that the type checker has access to the key, the type of \ensuremath{\Varid{del}} can be
+\ensuremath{\Conid{Proxy}\;\Varid{k}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{k})\;(\Conid{R} \uplus \Conid{Integer})}.
+
+The next problem is that, \ensuremath{\Varid{del}}, at term level, gets only a value constructor
+\ensuremath{\Conid{Proxy}} without further information, while it needs to pass a \ensuremath{\Conid{ByteString}} key
+to \ensuremath{\Varid{\Conid{Hedis}.del}}. Every concrete string literal lifted to a type, for example,
+\ensuremath{\text{\tt \char34 A\char34}}, belongs to a type class \ensuremath{\Conid{KnownSymbol}}. For all type \ensuremath{\Varid{k}} in \ensuremath{\Conid{KnownSymbol}},
+the function \ensuremath{\Varid{symbolVal}}:\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[3]{}\Varid{symbolVal}\mathbin{::}\Conid{KnownSymbol}\;\Varid{k}\Rightarrow \Varid{proxy}\;\Varid{k}\to \Conid{String}~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+retrieves the string associated with a type-level literal that is known at
+compile time. In summary, \ensuremath{\Varid{del}} can be implemented as:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{6}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{45}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{del}{}\<[6]%
+\>[6]{}\mathbin{::}\Conid{KnownSymbol}\;\Varid{k}{}\<[E]%
+\\
+\>[6]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Del}\;\Varid{xs}\;\Varid{k})\;(\Conid{R} \uplus \Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{del}\;\Varid{key}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.del}\;[\mskip1.5mu \Varid{encodeKey}\;\Varid{key}\mskip1.5mu]){}\<[45]%
+\>[45]{}~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+where \ensuremath{\Varid{encodeKey}\mathrel{=}\Varid{encode}\mathbin{\cdot}\Varid{symbolVal}}.
+
+A final note: the function \ensuremath{\Varid{encode}}, from the Haskell library {\sc cereal},
+helps to convert certain datatypes that are {\em serializable} into \ensuremath{\Conid{ByteString}}.
+The function and its dual \ensuremath{\Varid{decode}} will be used more later.
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{encode}{}\<[9]%
+\>[9]{}\mathbin{::}\Conid{Serialize}\;\Varid{a}\Rightarrow \Varid{a}\to \Conid{ByteString}~~,{}\<[E]%
+\\
+\>[B]{}\Varid{decode}{}\<[9]%
+\>[9]{}\mathbin{::}\Conid{Serialize}\;\Varid{a}\Rightarrow \Conid{ByteString}\to \Conid{Either}\;\Conid{String}\;\Varid{a}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\subsection{Automatic Serialization}
+\label{sec:polymorphic-redis}
+
+As mentioned before, while \Redis{} provide a number of container types
+including lists, sets, and hash, etc., the primitive type is string. \Hedis{}
+programmers manually convert data of other types to strings before saving them
+into the data store. In \Edis{}, we wish to save some of the effort for the
+programmers, as well as keeping a careful record of the intended types of the
+strings in the data store.
+
+To keep track of intended types of strings in the data store, we define the
+following types (that have no terms):
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{16}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{StringOf}{}\<[16]%
+\>[16]{}\mathbin{::}\mathbin{*}\to \mathbin{*}~~,{}\<[E]%
+\\
+\>[B]{}\mathbf{data}\;\Conid{ListOf}{}\<[16]%
+\>[16]{}\mathbin{::}\mathbin{*}\to \mathbin{*}~~,{}\<[E]%
+\\
+\>[B]{}\mathbf{data}\;\Conid{SetOf}{}\<[16]%
+\>[16]{}\mathbin{::}\mathbin{*}\to \mathbin{*}~~...{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+If a key is associated with, for example, \ensuremath{\Conid{StringOf}\;\Conid{Int}} in our dictionary, we
+mean that its value in the data store was serialized from an \ensuremath{\Conid{Int}} and should be
+used as an \ensuremath{\Conid{Int}}. Types \ensuremath{\Conid{ListOf}\;\Varid{a}} and \ensuremath{\Conid{SetOf}\;\Varid{a}}, respectively, denotes that the
+value is a list or a set of type \ensuremath{\Varid{a}}.
+
+While the \ensuremath{\Varid{set}} command in \Hedis{} always writes a string to the data store,
+the corresponding \ensuremath{\Varid{set}} in \Redis{} applies to any serializable type (those
+in the class \ensuremath{\Conid{Serialize}}), and performs the encoding for the user:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{6}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{set}{}\<[6]%
+\>[6]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Serialize}\;\Varid{a}){}\<[E]%
+\\
+\>[6]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Varid{a}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{k}\;(\Conid{StringOf}\;\Varid{a}))\;(\Conid{Either}\;\Conid{Reply}\;\Conid{Status}){}\<[E]%
+\\
+\>[B]{}\Varid{set}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.set}\;(\Varid{encodeKey}\;\Varid{key})\;(\Varid{encode}\;\Varid{val}))~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+For example, executing \ensuremath{\Varid{set}\;(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\text{\tt \char34 A\char34})\;\Conid{True}} updates the dictionary
+with an entry \ensuremath{\mbox{\textquotesingle}(\text{\tt \char34 A\char34},\Conid{StringOf}\;\Conid{Bool})}. If \ensuremath{\text{\tt \char34 A\char34}} is not in the dictionary,
+this entry is added; otherwise the old type of \ensuremath{\text{\tt \char34 A\char34}} is updated to
+\ensuremath{\Conid{StringOf}\;\Conid{Bool}}.
+
+\Redis{} command \texttt{INCR} reads the (string) value of the given key, parses
+it as an integer, and increments it by one, before storing it back. The command
+\texttt{INCRBYFLOAT} increments the floating point value of a key by a given
+amount. They are defined in \Edis{} below:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{7}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{14}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{incr}{}\<[7]%
+\>[7]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Get}\;\Varid{xs}\;\Varid{k}\mathrel{\sim}\Conid{StringOf}\;\Conid{Integer}){}\<[E]%
+\\
+\>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{R} \uplus \Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{incr}\;\Varid{key}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.incr}\;(\Varid{encodeKey}\;\Varid{key}))~~,{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\Varid{incrbyfloat}{}\<[14]%
+\>[14]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Get}\;\Varid{xs}\;\Varid{k}\mathrel{\sim}\Conid{StringOf}\;\Conid{Double}){}\<[E]%
+\\
+\>[14]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Double}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{R} \uplus \Conid{Double}){}\<[E]%
+\\
+\>[B]{}\Varid{incrbyfloat}\;\Varid{key}\;\Varid{eps}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.incrbyfloat}\;(\Varid{encodeKey}\;\Varid{key})\;\Varid{eps})~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+Notice the use of (\ensuremath{\mathrel{\sim}}), \emph{equality constraints}~\cite{typeeq}, to enforce
+that the intended type of the value of \ensuremath{\Varid{k}} must respectively be \ensuremath{\Conid{Integer}} and
+\ensuremath{\Conid{Double}}. The function \ensuremath{\Varid{incr}} is only allowed to be called in a context where
+the type checker is able to reduce \ensuremath{\Conid{Get}\;\Varid{xs}\;\Varid{k}} to \ensuremath{\Conid{StringOf}\;\Conid{Integer}} ---
+recall that when \ensuremath{\Varid{k}} is not in \ensuremath{\Varid{xs}}, \ensuremath{\Conid{Get}\;\Varid{xs}\;\Varid{k}} cannot be fully reduced. The
+type of \ensuremath{\Varid{incrbyfloat}} works in a similar way.
+
+\subsection{Disjunctive Constraints}
+\label{sec:disjunctive-constraints}
+
+Recall, from Section \ref{sec:introduction}, that commands \texttt{LPUSH key
+val} and \texttt{LLEN key} return normally either when \ensuremath{\Varid{key}} presents in the
+data store and is assigned a list, or when \ensuremath{\Varid{key}} does not present at all.
+What we wish to have in their constraint is thus a predicate equivalent to \ensuremath{\Conid{Get}\;\Varid{xs}\;\Varid{k}\doubleequals\Conid{ListOf}\;\Varid{a}\mathrel{\vee}\neg \;(\Conid{Member}\;\Varid{xs}\;\Varid{k})}. In fact, many \Redis{} commands
+are invokable under such ``well-typed, or non-existent'' precondition.
+
+To impose a conjunctive constraint \ensuremath{\Conid{P}\mathrel{\wedge}\Conid{Q}}, one may simply put them both in the
+type: \ensuremath{(\Conid{P},\Conid{Q})\Rightarrow \mathbin{...}}. Expressing disjunctive constraints is only slightly
+harder, thanks to our type-level functions. We may thus write the predicate as:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Conid{Get}\;\Varid{xs}\;\Varid{k}\mathrel{\sim}\Conid{ListOf}\;\Varid{a}\mathrel{\Conid{`Or`}}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{k})~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+To avoid referring to \ensuremath{\Varid{a}}, which might not exist, we define an auxiliary predicate \ensuremath{\Conid{IsList}\mathbin{::}\mathbin{*}\to \Conid{Bool}} such that \ensuremath{\Conid{IsList}\;\Varid{t}} reduces to \ensuremath{\mbox{\textquotesingle}\Conid{True}}
+only if \ensuremath{\Varid{t}\mathrel{=}\Conid{ListOf}\;\Varid{a}}. As many \Redis{} commands are invokable only under such
+``well-typed, or non-existent'' precondition, we give names to such constraints,
+as seen in Figure~\ref{fig:xxxOrNX}.
+
+\begin{figure}[t]
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{14}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{18}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{22}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{24}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{28}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{IsList}\;(\Varid{t}\mathbin{::}\mathbin{*})\mathbin{::}\Conid{Bool}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsList}\;(\Conid{ListOf}\;\Varid{a}){}\<[24]%
+\>[24]{}\mathrel{=}\mbox{\textquotesingle}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsList}\;\Varid{t}{}\<[24]%
+\>[24]{}\mathrel{=}\mbox{\textquotesingle}\Conid{False}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{IsSet}\;(\Varid{t}\mathbin{::}\mathbin{*})\mathbin{::}\Conid{Bool}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsSet}\;(\Conid{SetOf}\;\Varid{a}){}\<[22]%
+\>[22]{}\mathrel{=}\mbox{\textquotesingle}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsSet}\;\Varid{t}{}\<[22]%
+\>[22]{}\mathrel{=}\mbox{\textquotesingle}\Conid{False}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{IsString}\;(\Varid{t}\mathbin{::}\mathbin{*})\mathbin{::}\Conid{Bool}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsString}\;(\Conid{StringOf}\;\Varid{a}){}\<[28]%
+\>[28]{}\mathrel{=}\mbox{\textquotesingle}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{IsString}\;\Varid{t}{}\<[28]%
+\>[28]{}\mathrel{=}\mbox{\textquotesingle}\Conid{False}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{type}\;\Conid{ListOrNX}\;{}\<[18]%
+\>[18]{}\Varid{xs}\;\Varid{k}\mathrel{=}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}(\Conid{IsList}\;{}\<[14]%
+\>[14]{}(\Conid{Get}\;\Varid{xs}\;\Varid{k})\mathrel{\Conid{`Or`}}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{k}))\mathrel{\sim}\mbox{\textquotesingle}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Conid{SetOrNX}\;{}\<[18]%
+\>[18]{}\Varid{xs}\;\Varid{k}\mathrel{=}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}(\Conid{IsSet}\;{}\<[14]%
+\>[14]{}(\Conid{Get}\;\Varid{xs}\;\Varid{k})\mathrel{\Conid{`Or`}}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{k}))\mathrel{\sim}\mbox{\textquotesingle}\Conid{True}{}\<[E]%
+\\
+\>[B]{}\mathbf{type}\;\Conid{StringOrNX}\;{}\<[18]%
+\>[18]{}\Varid{xs}\;\Varid{k}\mathrel{=}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}(\Conid{IsString}\;{}\<[14]%
+\>[14]{}(\Conid{Get}\;\Varid{xs}\;\Varid{k})\mathrel{\Conid{`Or`}}\Conid{Not}\;(\Conid{Member}\;\Varid{xs}\;\Varid{k}))\mathrel{\sim}\mbox{\textquotesingle}\Conid{True}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\caption{The ``well-typed, or non-existent'' constraints.}
+\label{fig:xxxOrNX}
+\end{figure}
+
+The \Edis{} counterpart of \texttt{LPUSH} and \texttt{LLEN} are therefore:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{7}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{8}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{lpush}{}\<[8]%
+\>[8]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Serialize}\;\Varid{a},\Conid{ListOrNX}\;\Varid{xs}\;\Varid{k}){}\<[E]%
+\\
+\>[8]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Varid{a}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{k}\;(\Conid{ListOf}\;\Varid{a}))\;(\Conid{R} \uplus \Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{lpush}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.lpush}\;(\Varid{encodeKey}\;\Varid{key})\;[\mskip1.5mu \Varid{encode}\;\Varid{val}\mskip1.5mu])~~,{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\Varid{llen}{}\<[7]%
+\>[7]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{ListOrNX}\;\Varid{xs}\;\Varid{k}){}\<[E]%
+\\
+\>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{R} \uplus \Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{llen}\;\Varid{key}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.llen}\;(\Varid{encodeKey}\;\Varid{key}))~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+Similarly, the type of \ensuremath{\Varid{sadd}}, a function we have talked about a lot,
+is given below:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{7}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{sadd}{}\<[7]%
+\>[7]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Serialize}\;\Varid{a},\Conid{SetOrNX}\;\Varid{xs}\;\Varid{k}){}\<[E]%
+\\
+\>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Varid{a}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{k}\;(\Conid{SetOf}\;\Varid{a}))\;(\Conid{R} \uplus \Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{sadd}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.sadd}\;(\Varid{encodeKey}\;\Varid{key})\;[\mskip1.5mu \Varid{encode}\;\Varid{val}\mskip1.5mu])~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+To see a command with a more complex type, consider \ensuremath{\Varid{setnx}}, which
+uses the type-level function \ensuremath{\Conid{If}} defined in Section \ref{sec:type-fun}:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{8}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{36}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{setnx}{}\<[8]%
+\>[8]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Serialize}\;\Varid{a}){}\<[E]%
+\\
+\>[8]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Varid{a}\to \Conid{Edis}\;\Varid{xs}\;{}\<[36]%
+\>[36]{}(\Conid{If}\;(\Conid{Member}\;\Varid{xs}\;\Varid{k})\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{k}\;(\Conid{StringOf}\;\Varid{a})))\;{}\<[E]%
+\\
+\>[36]{}(\Conid{Either}\;\Conid{Reply}\;\Conid{Bool}){}\<[E]%
+\\
+\>[B]{}\Varid{setnx}\;\Varid{key}\;\Varid{val}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.setnx}\;(\Varid{encodeKey}\;\Varid{key})\;(\Varid{encode}\;\Varid{val}))~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+From the type one can see that \ensuremath{\Varid{setnx}\;\Varid{key}\;\Varid{val}} creates a new entry \ensuremath{(\Varid{key},\Varid{val})}
+in the data store only if \ensuremath{\Varid{key}} is fresh. The type of \ensuremath{\Varid{setnx}} computes a
+postcondition for static checking, as well as serving as a good documentation
+for its semantics.
+
+\subsection{Hashes}
+
+{\em Hash} is a useful datatype supported by \Redis{}. While the \Redis{} data
+store can be seen as a set of key/value pairs, a hash is itself a set of
+field/value pairs. The following commands assigns a hash to key \texttt{user}.
+The fields are \texttt{name}, \texttt{birthyear}, and \texttt{verified},
+respectively with values \texttt{banacorn}, \texttt{1992}, and \texttt{1}.
+\begin{Verbatim}[xleftmargin=.4in]
+redis> hmset user name banacorn birthyear 1992 verified 1
+OK
+redis> hget user name
+"banacorn"
+redis> hget user birthyear
+"1992"
+\end{Verbatim}
+
+For a hash to be useful, we should allow the fields to have different types. To
+keep track of types of fields in a hash, \ensuremath{\Conid{HashOf}} takes a list of \ensuremath{(\Conid{Symbol},\mathbin{*})}
+pairs:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{HashOf}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]\to \mathbin{*}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+By having an entry \ensuremath{(\Varid{k},\Conid{HashOF}\;\Varid{ys})} in a dictionary, we denote that the value of
+key \ensuremath{\Varid{k}} is a hash whose fields and their types are specified by \ensuremath{\Varid{ys}}, which is
+also a dictionary.
+
+\begin{figure}[t]
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{22}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{34}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{35}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{36}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{43}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{44}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{45}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{76}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{77}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{81}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{GetHash}\;(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{k}\mathbin{::}\Conid{Symbol})\;(\Varid{f}\mathbin{::}\Conid{Symbol})\mathbin{::}\mathbin{*}\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{GetHash}\;(\mbox{\textquotesingle}(\Varid{k},\Conid{HashOf}\;\Varid{hs}){}\<[35]%
+\>[35]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[44]%
+\>[44]{}\Varid{k}\;\Varid{f}\mathrel{=}\Conid{Get}\;\Varid{hs}\;\Varid{f}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{GetHash}\;(\mbox{\textquotesingle}(\Varid{l},\Varid{y}){}\<[35]%
+\>[35]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[44]%
+\>[44]{}\Varid{k}\;\Varid{f}\mathrel{=}\Conid{GetHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{SetHash}\;{}\<[22]%
+\>[22]{}(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{k}\mathbin{::}\Conid{Symbol})\;{}\<[E]%
+\\
+\>[22]{}(\Varid{f}\mathbin{::}\Conid{Symbol})\;(\Varid{a}\mathbin{::}\mathbin{*})\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{SetHash}\;\mbox{\textquotesingle}[~]\;{}\<[44]%
+\>[44]{}\Varid{k}\;\Varid{f}\;\Varid{a}\mathrel{=}\mbox{\textquotesingle}(\Varid{k},\Conid{HashOf}\;(\Conid{Set}\;\mbox{\textquotesingle}[~]\;\Varid{f}\;\Varid{a}))\mathrel{\,\mbox{\textquotesingle}\!:}\mbox{\textquotesingle}[~]{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{SetHash}\;(\mbox{\textquotesingle}(\Varid{k},\Conid{HashOf}\;\Varid{hs}){}\<[35]%
+\>[35]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[44]%
+\>[44]{}\Varid{k}\;\Varid{f}\;\Varid{a}\mathrel{=}\mbox{\textquotesingle}(\Varid{k},\Conid{HashOf}\;(\Conid{Set}\;\Varid{hs}\;{}\<[77]%
+\>[77]{}\Varid{f}\;\Varid{a}))\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{SetHash}\;(\mbox{\textquotesingle}(\Varid{l},\Varid{y}){}\<[35]%
+\>[35]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[44]%
+\>[44]{}\Varid{k}\;\Varid{f}\;\Varid{a}\mathrel{=}\mbox{\textquotesingle}(\Varid{l},\Varid{y}){}\<[81]%
+\>[81]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Conid{SetHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}\;\Varid{a}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{DelHash}\;(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{k}\mathbin{::}\Conid{Symbol})\;(\Varid{f}\mathbin{::}\Conid{Symbol})\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu]\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{DelHash}\;\mbox{\textquotesingle}[~]\;{}\<[43]%
+\>[43]{}\Varid{k}\;\Varid{f}\mathrel{=}\mbox{\textquotesingle}[~]{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{DelHash}\;(\mbox{\textquotesingle}(\Varid{k},\Conid{HashOf}\;\Varid{hs})\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[43]%
+\>[43]{}\Varid{k}\;\Varid{f}\mathrel{=}\mbox{\textquotesingle}(\Varid{k},\Conid{HashOf}\;(\Conid{Del}\;\Varid{hs}\;\Varid{f}))\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{DelHash}\;(\mbox{\textquotesingle}(\Varid{l},\Varid{y}){}\<[34]%
+\>[34]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[43]%
+\>[43]{}\Varid{k}\;\Varid{f}\mathrel{=}\mbox{\textquotesingle}(\Varid{l},\Varid{y}){}\<[76]%
+\>[76]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Conid{DelHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\mathbf{type}\;\Varid{family}\;\Conid{MemHash}\;(\Varid{xs}\mathbin{::}[\mskip1.5mu (\Conid{Symbol},\mathbin{*})\mskip1.5mu])\;(\Varid{k}\mathbin{::}\Conid{Symbol})\;(\Varid{f}\mathbin{::}\Conid{Symbol})\mathbin{::}\Conid{Bool}\;\mathbf{where}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{MemHash}\;\mbox{\textquotesingle}[~]\;{}\<[45]%
+\>[45]{}\Varid{k}\;\Varid{f}\mathrel{=}\mbox{\textquotesingle}\Conid{False}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{MemHash}\;(\mbox{\textquotesingle}(\Varid{k},\Conid{HashOf}\;\Varid{hs}){}\<[36]%
+\>[36]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[45]%
+\>[45]{}\Varid{k}\;\Varid{f}\mathrel{=}\Conid{Member}\;\Varid{hs}\;\Varid{f}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{MemHash}\;(\mbox{\textquotesingle}(\Varid{k},\Varid{x}){}\<[36]%
+\>[36]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[45]%
+\>[45]{}\Varid{k}\;\Varid{f}\mathrel{=}\mbox{\textquotesingle}\Conid{False}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\Conid{MemHash}\;(\mbox{\textquotesingle}(\Varid{l},\Varid{y}){}\<[36]%
+\>[36]{}\mathrel{\,\mbox{\textquotesingle}\!:}\Varid{xs})\;{}\<[45]%
+\>[45]{}\Varid{k}\;\Varid{f}\mathrel{=}\Conid{MemHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\caption{Type-level operations for dictionaries with hashes.}
+\label{fig:xxxHash}
+\end{figure}
+
+Figure \ref{fig:xxxHash} presents some operations we need on dictionaries when
+dealing with hashes. Let \ensuremath{\Varid{xs}} be a dictionary, \ensuremath{\Conid{GetHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}} returns the type
+of field \ensuremath{\Varid{f}} in the hash assigned to key \ensuremath{\Varid{k}}, if both \ensuremath{\Varid{k}} and \ensuremath{\Varid{f}} exists.
+\ensuremath{\Conid{SetHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}\;\Varid{a}} assigns the type \ensuremath{\Varid{a}} to the field \ensuremath{\Varid{f}} of hash \ensuremath{\Varid{k}}; if either
+\ensuremath{\Varid{f}} or \ensuremath{\Varid{k}} does not exist, the hash/field is created. \ensuremath{\Conid{Del}\;\Varid{xs}\;\Varid{k}\;\Varid{f}} removes a
+field, while \ensuremath{\Conid{MemHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}} checks whether the key \ensuremath{\Varid{k}} exists in \ensuremath{\Varid{xs}}, and its
+value is a hash having field \ensuremath{\Varid{f}}. Their definitions make use of functions \ensuremath{\Conid{Get}},
+\ensuremath{\Conid{Set}}, and \ensuremath{\Conid{Member}} defined for dictionaries.
+
+Once those type-level functions are defined, embedding of \Hedis{} commands for
+hashes is more or less routine. For example, functions \ensuremath{\Varid{hset}} and \ensuremath{\Varid{hget}}
+are shown below. Note that, instead of \ensuremath{\Varid{hmset}} (available in \Hedis{}), we
+provide a function \ensuremath{\Varid{hset}} that assigns fields and values one pair at a time.
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{3}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{7}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{13}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{hset}{}\<[7]%
+\>[7]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{KnownSymbol}\;\Varid{f},\Conid{Serialize}\;\Varid{a},\Conid{HashOrNX}\;\Varid{xs}\;\Varid{k}){}\<[E]%
+\\
+\>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Proxy}\;\Varid{f}\to \Varid{a}{}\<[E]%
+\\
+\>[7]{}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{SetHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}\;(\Conid{StringOf}\;\Varid{a}))\;(\Conid{R} \uplus \Conid{Bool}){}\<[E]%
+\\
+\>[B]{}\Varid{hset}\;\Varid{key}\;\Varid{field}\;\Varid{val}\mathrel{=}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Conid{Edis}\;(\Varid{\Conid{Hedis}.hset}\;(\Varid{encodeKey}\;\Varid{key})\;(\Varid{encodeKey}\;\Varid{field})\;(\Varid{encode}\;\Varid{val}))~~,{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\Varid{hget}{}\<[7]%
+\>[7]{}\mathbin{::}({}\<[13]%
+\>[13]{}\Conid{KnownSymbol}\;\Varid{k},\Conid{KnownSymbol}\;\Varid{f},\Conid{Serialize}\;\Varid{a},{}\<[E]%
+\\
+\>[13]{}\Conid{StringOf}\;\Varid{a}\mathrel{\sim}\Conid{GetHash}\;\Varid{xs}\;\Varid{k}\;\Varid{f}){}\<[E]%
+\\
+\>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Proxy}\;\Varid{f}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{R} \uplus \Conid{Maybe}\;\Varid{a}){}\<[E]%
+\\
+\>[B]{}\Varid{hget}\;\Varid{key}\;\Varid{field}\mathrel{=}{}\<[E]%
+\\
+\>[B]{}\hsindent{3}{}\<[3]%
+\>[3]{}\Conid{Edis}\;(\Varid{\Conid{Hedis}.hget}\;(\Varid{encodeKey}\;\Varid{key})\;(\Varid{encodeKey}\;\Varid{field})\bind \Varid{decodeAsMaybe})~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+where \ensuremath{\Varid{decodeAsMaybe}\mathbin{::}\Conid{Serialize}\;\Varid{a}\Rightarrow (\Conid{R} \uplus \Conid{Maybe}\;\Conid{ByteString})\to \Conid{Redis}\;(\Conid{R} \uplus \Conid{Maybe}\;\Varid{a})}, using the function \ensuremath{\Varid{decode}}
+mentioned in Section \ref{sec:proxy-key}, parses the \ensuremath{\Conid{ByteString}} in
+\ensuremath{\Conid{R} \uplus \Conid{Maybe}\;\anonymous } to type \ensuremath{\Varid{a}}. The definition is a bit tedious but
+routine.
+
+Note that, instead of \ensuremath{\Varid{hmset}} (available in \Hedis{}), we
+provide a function \ensuremath{\Varid{hset}} that assigns fields and values one pair at at time.
+We will talk about difficulties of implementing \ensuremath{\Varid{hmset}} in
+Section~\ref{sec:discussions}.
+
+\subsection{Assertions}
+\label{sec:assertions}
+
+% Consider the following scenario: We want to retrieve the value of some existing
+% key, say, |"ab initio"|, with the function\footnote{The semantics of |get| in
+% \Redis{} is actually more forgiving. See Section~\ref{sec:discussions}.}:
+% \begin{spec}
+% get  :: (KnownSymbol k, Serialize a, StringOf a ~ Get xs k)
+%      => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~."-}
+% \end{spec}
+%
+% However, Haskell would complain that, the key |"ab initio"| was not
+% before seen in the dictionary. So we could never write programs to retrieve the
+% value of |"ab initio"|, unless its creation was witnessed by the type checker.
+
+
+Finally, the creation/update behavior of \Redis{} functions is, in our opinion,
+very error-prone. It might be preferable if we can explicit declare some new
+keys, after ensuring that they do not already exist (in our types). This can be done below:
+% It might be preferable if we can explicitly declare some new keys, under the
+%  precondition that they do not already exist in our types. This can be done as
+%  follows:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{10}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{declare}{}\<[10]%
+\>[10]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Member}\;\Varid{xs}\;\Varid{k}\mathrel{\sim}\Conid{False}){}\<[E]%
+\\
+\>[10]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Proxy}\;\Varid{a}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\Varid{k}\;\Varid{a})\;(){}\<[E]%
+\\
+\>[B]{}\Varid{declare}\;\Varid{key}\;\Varid{typ}\mathrel{=}\Conid{Edis}\;(\Varid{return}\;())~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+% renounce :: (KnownSymbol s, Member xs s ~ True)
+%         => Proxy s -> Edis xs (Del xs s) ()
+% renounce s = Edis $ return () {-"~~."-}
+The command \ensuremath{\Varid{declare}\;\Varid{key}\;\Varid{typ}}, where \ensuremath{\Varid{typ}} is the proxy of \ensuremath{\Varid{a}}, adds a fresh
+ \ensuremath{\Varid{key}} with type \ensuremath{\Varid{a}} into the dictionary. Notice that \ensuremath{\Varid{declare}} does nothing at
+ term level, but simply returns \ensuremath{()}, since it only has effects on types.
+
+% The key is not actually created yet.
+% The declaration, however, ensures that if |key| is actually created, perhaps
+% by one of those ``well-typed or non-existent'' command, its type must be |a|.
+% The command |start| initializes the dictionary to the empty list:
+
+Another command for type level assertion, \ensuremath{\Varid{start}}, initializes the dictionary to
+ the empty list, comes in handy when starting a series of \Edis{} commands:
+
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{start}\mathbin{::}\Conid{Edis}\;\mbox{\textquotesingle}[~]\;\mbox{\textquotesingle}[~]\;(){}\<[E]%
+\\
+\>[B]{}\Varid{start}\mathrel{=}\Conid{Edis}\;(\Varid{return}\;())~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+\subsection{A Larger Example}
+
+We present a larger example as a summary. The task is to store a queue of
+messages in \Redis{}. Messages are represented by a \ensuremath{\Conid{ByteString}} and an
+\ensuremath{\Conid{Integer}} identifier:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{35}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\mathbf{data}\;\Conid{Message}\mathrel{=}\Conid{Msg}\;\Conid{ByteString}\;\Conid{Integer}\;\mathbf{deriving}\;(\Conid{Show},\Conid{Generic})~~,{}\<[E]%
+\\
+\>[B]{}\mathbf{instance}\;\Conid{Serialize}\;\Conid{Message}\;\mathbf{where}\;{}\<[35]%
+\>[35]{}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+In the data store, the queue is represented by a list. Before pushing a message
+into the queue, we increment \ensuremath{\Varid{counter}}, a key storing a counter, and use it as the
+identifier of the message:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{5}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{7}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{13}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{push}{}\<[7]%
+\>[7]{}\mathbin{::}(\Conid{StringOfIntegerOrNX}\;\Varid{xs}\;\text{\tt \char34 counter\char34},\Conid{ListOrNX}\;\Varid{xs}\;\text{\tt \char34 queue\char34}){}\<[E]%
+\\
+\>[7]{}\Rightarrow \Conid{ByteString}\to \Conid{Edis}\;\Varid{xs}\;(\Conid{Set}\;\Varid{xs}\;\text{\tt \char34 queue\char34}\;(\Conid{ListOf}\;\Conid{Message}))\;(\Conid{R} \uplus \Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\Varid{push}\;\Varid{msg}\mathrel{=}{}\<[13]%
+\>[13]{}\Varid{incr}\;\Varid{kCounter}{}\<[E]%
+\\
+\>[B]{}\hsindent{5}{}\<[5]%
+\>[5]{}\mathbin{`\Varid{bind}`}{}\<[13]%
+\>[13]{}\lambda \Varid{i}\to \Varid{lpush}\;\Varid{kQueue}\;(\Conid{Msg}\;\Varid{msg}\;(\Varid{fromRight}\;\Varid{i}))~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+%​
+where \ensuremath{\Varid{fromRight}\mathbin{::}\Conid{Either}\;\Varid{a}\;\Varid{b}\to \Varid{b}} extracts the value wrapped by constructor
+\ensuremath{\Conid{Right}}, and the constraint \ensuremath{\Conid{StringOfIntegerOrNX}\;\Varid{xs}\;\Varid{k}} holds if either \ensuremath{\Varid{k}}
+presents in \ensuremath{\Varid{xs}} and is converted from an \ensuremath{\Conid{Integer}}, or \ensuremath{\Varid{k}} does not
+present in \ensuremath{\Varid{xs}}. For brevity, the proxies are given names: \\
+\noindent{\centering %\small
+\begin{minipage}[b]{0.4\linewidth}
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{14}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{kCounter}\mathbin{::}{}\<[14]%
+\>[14]{}\Conid{Proxy}\;\text{\tt \char34 counter\char34}{}\<[E]%
+\\
+\>[B]{}\Varid{kCounter}\mathrel{=}{}\<[14]%
+\>[14]{}\Conid{Proxy}~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\end{minipage}
+\begin{minipage}[b]{0.4\linewidth}
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{12}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{kQueue}\mathbin{::}{}\<[12]%
+\>[12]{}\Conid{Proxy}\;\text{\tt \char34 queue\char34}{}\<[E]%
+\\
+\>[B]{}\Varid{kQueue}\mathrel{=}{}\<[12]%
+\>[12]{}\Conid{Proxy}~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+\end{minipage}}\\
+To pop a message we use the function \ensuremath{\Varid{rpop}} which, given a key associated with
+a list, extracts the rightmost element of the list
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{6}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{7}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{pop}{}\<[6]%
+\>[6]{}\mathbin{::}(\Conid{Get}\;\Varid{xs}\;\text{\tt \char34 queue\char34}\mathrel{\sim}\Conid{ListOf}\;\Conid{Message}){}\<[E]%
+\\
+\>[6]{}\Rightarrow \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{R} \uplus \Conid{Maybe}\;\Conid{Message}){}\<[E]%
+\\
+\>[B]{}\Varid{pop}\mathrel{=}\Varid{rpop}\;\Varid{kQueue}~~,{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\Varid{rpop}{}\<[7]%
+\>[7]{}\mathbin{::}(\Conid{KnownSymbol}\;\Varid{k},\Conid{Serialize}\;\Varid{a},\Conid{Get}\;\Varid{xs}\;\Varid{k}\mathrel{\sim}\Conid{ListOf}\;\Varid{a}){}\<[E]%
+\\
+\>[7]{}\Rightarrow \Conid{Proxy}\;\Varid{k}\to \Conid{Edis}\;\Varid{xs}\;\Varid{xs}\;(\Conid{R} \uplus \Conid{Maybe}\;\Varid{a}){}\<[E]%
+\\
+\>[B]{}\Varid{rpop}\;\Varid{key}\mathrel{=}\Conid{Edis}\;(\Varid{\Conid{Hedis}.rpop}\;(\Varid{encodeKey}\;\Varid{key})\bind \Varid{decodeAsMaybe})~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+To get things going, the main program builds a connection with the \Redis{}
+server, runs an embedded program \ensuremath{\Varid{prog}}, and prints the result, which in this
+example is \ensuremath{\text{\tt \char34 hello\char34}}:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{4}{@{}>{\hspre}c<{\hspost}@{}}%
+\column{4E}{@{}l@{}}%
+\column{9}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{12}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{20}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{27}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{main}\mathbin{::}\Conid{IO}\;(){}\<[E]%
+\\
+\>[B]{}\Varid{main}\mathrel{=}\mathbf{do}\;{}\<[12]%
+\>[12]{}\Varid{conn}{}\<[20]%
+\>[20]{}\leftarrow \Varid{connect}\;\Varid{defaultConnectInfo}{}\<[E]%
+\\
+\>[12]{}\Varid{result}{}\<[20]%
+\>[20]{}\leftarrow \Varid{runRedis}\;\Varid{conn}\;(\Varid{unEdis}\;(\Varid{start}\mathbin{>\!\!\!>\!\!\!>}\Varid{prog})){}\<[E]%
+\\
+\>[12]{}\Varid{print}\;\Varid{result}~~,{}\<[E]%
+\\[\blanklineskip]%
+\>[B]{}\Varid{prog}\mathrel{=}{}\<[9]%
+\>[9]{}\Varid{declare}\;\Varid{kCounter}\;{}\<[27]%
+\>[27]{}(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;\Conid{Integer}){}\<[E]%
+\\
+\>[B]{}\hsindent{4}{}\<[4]%
+\>[4]{}\mathbin{>\!\!\!>\!\!\!>}{}\<[4E]%
+\>[9]{}\Varid{declare}\;\Varid{kQueue}\;{}\<[27]%
+\>[27]{}(\Conid{Proxy}\mathbin{::}\Conid{Proxy}\;(\Conid{ListOf}\;\Conid{Message})){}\<[E]%
+\\
+\>[B]{}\hsindent{4}{}\<[4]%
+\>[4]{}\mathbin{>\!\!\!>\!\!\!>}{}\<[4E]%
+\>[9]{}\Varid{push}\;\text{\tt \char34 hello\char34}{}\<[E]%
+\\
+\>[B]{}\hsindent{4}{}\<[4]%
+\>[4]{}\mathbin{>\!\!\!>\!\!\!>}{}\<[4E]%
+\>[9]{}\Varid{push}\;\text{\tt \char34 world\char34}{}\<[E]%
+\\
+\>[B]{}\hsindent{4}{}\<[4]%
+\>[4]{}\mathbin{>\!\!\!>\!\!\!>}{}\<[4E]%
+\>[9]{}\Varid{pop}~~,{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+where the monadic sequencing operator \ensuremath{(\mathbin{>\!\!\!>\!\!\!>})} is defined by:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}(\mathbin{>\!\!\!>\!\!\!>})\mathbin{::}\Conid{IMonad}\;\Varid{m}\Rightarrow \Varid{m}\;\Varid{p}\;\Varid{q}\;\Varid{a}\to \Varid{m}\;\Varid{q}\;\Varid{r}\;\Varid{b}\to \Varid{m}\;\Varid{p}\;\Varid{r}\;\Varid{b}{}\<[E]%
+\\
+\>[B]{}\Varid{m}_{1}\mathbin{>\!\!\!>\!\!\!>}\Varid{m}_{2}\mathrel{=}\Varid{m}_{1}\mathbin{`\Varid{bind}`}(\lambda \anonymous \to \Varid{m}_{2})~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+Use of \ensuremath{\Varid{declare}} in \ensuremath{\Varid{prog}} ensures that neither \ensuremath{\text{\tt \char34 counter\char34}} nor \ensuremath{\text{\tt \char34 queue\char34}} exist
+before the execution of \ensuremath{\Varid{prog}}, while \ensuremath{\Varid{start}} in \ensuremath{\Varid{main}} guarantees that the
+program is given a fresh run without previously defined keys at all. Haskell
+is able to infer the type of \ensuremath{\Varid{prog}}:
+\begin{hscode}\SaveRestoreHook
+\column{B}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{15}{@{}>{\hspre}l<{\hspost}@{}}%
+\column{E}{@{}>{\hspre}l<{\hspost}@{}}%
+\>[B]{}\Varid{prog}\mathbin{::}\Conid{Edis}\;{}\<[15]%
+\>[15]{}\mbox{\textquotesingle}[~]\;\mbox{\textquotesingle}[\mbox{\textquotesingle}(\text{\tt \char34 counter\char34},\Conid{Integer}),\mbox{\textquotesingle}(\text{\tt \char34 queue\char34},\Conid{ListOf}\;\Conid{Message})]\;{}\<[E]%
+\\
+\>[15]{}(\Conid{R} \uplus \Conid{Maybe}\;\Conid{Message})~~.{}\<[E]%
+\ColumnHook
+\end{hscode}\resethooks
+
+
+% The following program increases the value of |"A"| as an integer, push the result of the increment to list |"L"|, and then pops it out:
+% \begin{spec}
+% main :: IO ()
+% main = do
+%     conn    <- connect defaultConnectInfo
+%     result  <- runRedis conn $ unEdis $ start
+%         `bind` \ _ ->  declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
+%         `bind` \ _ ->  incr (Proxy :: Proxy "A")
+%         `bind` \n ->  case n of
+%             Left  err  -> lpush (Proxy :: Proxy "L") 0
+%             Right n    -> lpush (Proxy :: Proxy "L") n
+%         `bind` \ _ ->  lpop     (Proxy :: Proxy "L")
+%     print result
+% \end{spec}
+
+% The syntax is pretty heavy, like the old days when there's no
+%  \emph{do-notation}\cite{history}. But if we don't need any variable bindings
+%  between operations, we could compose these commands with a sequencing operator
+%  |(>>>)|.
+
+
+% \begin{spec}
+% program = start
+%     >>> declare (Proxy :: Proxy "A") (Proxy :: Proxy Integer)
+%     >>> incr    (Proxy :: Proxy "A")
+%     >>> lpush   (Proxy :: Proxy "L") 0
+%     >>> lpop    (Proxy :: Proxy "L")
+% \end{spec}
