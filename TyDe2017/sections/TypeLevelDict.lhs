@@ -181,22 +181,22 @@ dictionary.
 \begin{figure}[t]
 \begin{spec}
 -- inserts or updates an entry
-type family Set  (xs :: [(Symbol, *)]) (k :: Symbol) (x :: *) ::
-            [(Symbol, *)] where
+type family Set  (xs :: [(Symbol, *)]) (k :: Symbol) (x :: *)
+                 :: [(Symbol, *)] where
     Set NIL                 k x = TList (TPar (k, x))
     Set (TPar(k, y) :- xs)  k x = TPar (k, x)  :- xs
     Set (TPar(t, y) :- xs)  k x = TPar (t, y)  :- Set xs k x
 
 -- removes an entry
-type family Del  (xs :: [(Symbol, *)]) (k :: Symbol) ::
-            [(Symbol, *)] where
+type family Del  (xs :: [(Symbol, *)]) (k :: Symbol)
+                 :: [(Symbol, *)] where
     Del NIL                  k = NIL
     Del (TPar (k, y) :- xs)  k = xs
     Del (TPar (t, y) :- xs)  k = TPar (t, y) :- Del xs k
 
 -- membership
-type family Member (xs :: [(Symbol, *)]) (k :: Symbol) ::
-            Bool where
+type family Member  (xs :: [(Symbol, *)]) (k :: Symbol)
+                    :: Bool where
     Member NIL                  k = FALSE
     Member (TPar(k, x) :- xs)   k = TRUE
     Member (TPar(t, x) :- xs)   k = Member xs k

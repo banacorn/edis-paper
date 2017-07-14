@@ -61,8 +61,8 @@ the function |symbolVal|:
 retrieves the string associated with a type-level literal that is known at
 compile time. In summary, |del| can be implemented as:
 \begin{spec}
-del  :: KnownSymbol k
-     => Proxy k -> Edis xs (Del xs k) (EitherReply Integer)
+del ::  KnownSymbol k =>
+        Proxy k -> Edis xs (Del xs k) (EitherReply Integer)
 del key = Edis (Hedis.del [encodeKey key])  {-"~~,"-}
 \end{spec}
 where |encodeKey = encode . symbolVal|.
@@ -101,9 +101,8 @@ While the |set| command in \Hedis{} always writes a string to the data store,
 the corresponding |set| in \Redis{} applies to any serializable type (those
 in the class |Serialize|), and performs the encoding for the user:
 \begin{spec}
-set  :: (KnownSymbol k, Serialize a)
-     => Proxy k -> a ->
-        Edis xs (Set xs k (StringOf a)) (Either Reply Status)
+set ::  (KnownSymbol k, Serialize a) => Proxy k -> a ->
+          Edis xs (Set xs k (StringOf a)) (Either Reply Status)
 set key val = Edis (Hedis.set (encodeKey key) (encode val)) {-"~~,"-}
 \end{spec}
 For example, executing |set (Proxy :: Proxy "A") True| updates the dictionary
@@ -116,14 +115,14 @@ it as an integer, and increments it by one, before storing it back. The command
 \texttt{INCRBYFLOAT} increments the floating point value of a key by a given
 amount. They are defined in \Edis{} below:
 \begin{spec}
-incr  :: (KnownSymbol k, Get xs k ~ StringOf Integer)
-      => Proxy k -> Edis xs xs (EitherReply Integer)
+incr ::  (KnownSymbol k, Get xs k ~ StringOf Integer) =>
+         Proxy k -> Edis xs xs (EitherReply Integer)
 incr key = Edis (Hedis.incr (encodeKey key)) {-"~~,"-}
 
-incrbyfloat  :: (KnownSymbol k, Get xs k ~ StringOf Double)
-             => Proxy k -> Double -> Edis xs xs (EitherReply Double)
+incrbyfloat ::  (KnownSymbol k, Get xs k ~ StringOf Double)
+                => Proxy k -> Double -> Edis xs xs (EitherReply Double)
 incrbyfloat key eps =
-            Edis (Hedis.incrbyfloat (encodeKey key) eps) {-"~~."-}
+  Edis (Hedis.incrbyfloat (encodeKey key) eps) {-"~~."-}
 \end{spec}
 Notice the use of (|~|), \emph{equality constraints}~\cite{typeeq}, to enforce
 that the intended type of the value of |k| must respectively be |Integer| and
@@ -177,33 +176,34 @@ type StringOrNX  xs k =
 
 The \Edis{} counterpart of \texttt{LPUSH} and \texttt{LLEN} are therefore:\\
 \begin{spec}
-lpush  :: (KnownSymbol k, Serialize a, ListOrNX xs k)
-       => Proxy k -> a ->
-          Edis xs (Set xs k (ListOf a)) (EitherReply Integer)
+lpush ::  (KnownSymbol k, Serialize a, ListOrNX xs k) =>
+          Proxy k -> a ->
+            Edis xs (Set xs k (ListOf a)) (EitherReply Integer)
 lpush key val =
           Edis (Hedis.lpush (encodeKey key) [encode val]) {-"~~,"-}
 
-llen  :: (KnownSymbol k, ListOrNX xs k)
-      => Proxy k -> Edis xs xs (EitherReply Integer)
+llen ::  (KnownSymbol k, ListOrNX xs k) =>
+         Proxy k -> Edis xs xs (EitherReply Integer)
 llen key = Edis (Hedis.llen (encodeKey key)) {-"~~."-}
 \end{spec}
 Similarly, the type of |sadd|, a function we have talked about a lot,
 is given below:
 \begin{spec}
-sadd  :: (KnownSymbol k, Serialize a, SetOrNX xs k)
-      => Proxy k -> a ->
-         Edis xs (Set xs k (SetOf a)) (EitherReply Integer)
-sadd key val = Edis (Hedis.sadd (encodeKey key) [encode val]) {-"~~,"-}
+sadd ::  (KnownSymbol k, Serialize a, SetOrNX xs k) =>
+         Proxy k -> a ->
+           Edis xs (Set xs k (SetOf a)) (EitherReply Integer)
+sadd key val =
+    Edis (Hedis.sadd (encodeKey key) [encode val]) {-"~~,"-}
 \end{spec}
 
 To see a command with a more complex type, consider |setnx|, which
 uses the type-level function |If| defined in Section \ref{sec:type-fun}:
 \begin{spec}
-setnx  :: (KnownSymbol k, Serialize a)
-       => Proxy k -> a ->
-       Edis xs  (If (Member xs k) xs (Set xs k (StringOf a)))
-                (Either Reply Bool)
-setnx key val = Edis (Hedis.setnx (encodeKey key) (encode val)) {-"~~."-}
+setnx ::  (KnownSymbol k, Serialize a) => Proxy k -> a ->
+           Edis xs  (If (Member xs k) xs (Set xs k (StringOf a)))
+                    (Either Reply Bool)
+setnx key val =
+    Edis (Hedis.setnx (encodeKey key) (encode val)) {-"~~."-}
 \end{spec}
 From the type one can see that |setnx key val| creates a new entry |(key,val)|
 in the data store only if |key| is fresh. The type of |setnx| computes a
@@ -284,16 +284,16 @@ hset  :: (KnownSymbol k, KnownSymbol f,
       => Proxy k -> Proxy f -> a
       -> Edis xs (SetHash xs k f (StringOf a)) (EitherReply Bool)
 hset key field val =
-  Edis (Hedis.hset (encodeKey key)
-       (encodeKey field) (encode val)) {-"~~,"-}
+  Edis (  Hedis.hset (encodeKey key)
+           (encodeKey field) (encode val)) {-"~~,"-}
 
 
-hget  :: (  KnownSymbol k, KnownSymbol f, Serialize a,
-            StringOf a ~ GetHash xs k f)
-      => Proxy k -> Proxy f -> Edis xs xs (EitherReply (Maybe a))
+hget ::  (  KnownSymbol k, KnownSymbol f, Serialize a,
+            StringOf a ~ GetHash xs k f) =>
+         Proxy k -> Proxy f -> Edis xs xs (EitherReply (Maybe a))
 hget key field =
-  Edis (Hedis.hget (encodeKey key) (encodeKey field) >>=
-       decodeAsMaybe) {-"~~,"-}
+  Edis (  Hedis.hget (encodeKey key) (encodeKey field) >>=
+          decodeAsMaybe) {-"~~,"-}
 \end{spec}
 where
 \begin{spec}
@@ -333,8 +333,8 @@ keys, after ensuring that they do not already exist (in our types). This can be 
 %  precondition that they do not already exist in our types. This can be done as
 %  follows:
 \begin{spec}
-declare  :: (KnownSymbol k, Member xs k ~ False)
-         => Proxy k -> Proxy a -> Edis xs (Set xs k a) ()
+declare ::  (KnownSymbol k, Member xs k ~ False) =>
+            Proxy k -> Proxy a -> Edis xs (Set xs k a) ()
 declare key typ = Edis (return ()) {-"~~."-}
 \end{spec}
 % renounce :: (KnownSymbol s, Member xs s ~ True)
@@ -374,9 +374,9 @@ In the data store, the queue is represented by a list. Before pushing a message
 into the queue, we increment |counter|, a key storing a counter, and use it as the
 identifier of the message:
 \begin{spec}
-push  :: (   StringOfIntegerOrNX xs "counter",
-             ListOrNX xs "queue")
-      => ByteString -> Edis xs (Set xs "queue"
+push ::  (   StringOfIntegerOrNX xs "counter",
+             ListOrNX xs "queue") =>
+         ByteString -> Edis xs (Set xs "queue"
           (ListOf Message)) (EitherReply Integer)
 push msg =  incr kCounter `bind` \i ->
             lpush kQueue (Msg msg (fromRight i)) {-"~~,"-}
@@ -401,14 +401,14 @@ kQueue =   Proxy {-"~~."-}
 To pop a message we use the function |rpop| which, given a key associated with
 a list, extracts the rightmost element of the list
 \begin{spec}
-pop  :: (Get xs "queue" ~ ListOf Message)
-     => Edis xs xs (EitherReply (Maybe Message))
+pop ::  (Get xs "queue" ~ ListOf Message) =>
+        Edis xs xs (EitherReply (Maybe Message))
 pop = rpop kQueue {-"~~,"-}
 
-rpop  :: (KnownSymbol k, Serialize a, Get xs k ~ ListOf a)
-      => Proxy k -> Edis xs xs (EitherReply (Maybe a))
-rpop key = Edis (Hedis.rpop (encodeKey key) >>=
-           decodeAsMaybe) {-"~~."-}
+rpop ::  (KnownSymbol k, Serialize a, Get xs k ~ ListOf a) =>
+         Proxy k -> Edis xs xs (EitherReply (Maybe a))
+rpop key = Edis (  Hedis.rpop (encodeKey key) >>=
+                   decodeAsMaybe) {-"~~."-}
 \end{spec}
 %
 Our sample program is shown below:
@@ -428,7 +428,7 @@ Use of |declare| in |prog| ensures that neither |"counter"| nor |"queue"| exist
 before the execution of |prog|. The program simply stores two strings in |"queue"|, before extracting the first string. GHC is able to infer the type of |prog|:
 \begin{spec}
 prog :: Edis  NIL (  TList (TPar ("counter", Integer),
-                     {-"\quad\!\!\!"-} TPar("queue", ListOf Message)))
+                     {-"\quad\!"-} TPar("queue", ListOf Message)))
               (EitherReply (Maybe Message)) {-"~~."-}
 \end{spec}
 

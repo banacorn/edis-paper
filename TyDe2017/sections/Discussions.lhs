@@ -18,8 +18,8 @@ error is raised if the value is not a string. In \Edis{} the situation is made
 slightly complex, since we parse the string to the type it was supposed to have
 encoded from. The \Edis{} version of |get| could be typed:
 \begin{spec}
-get  :: (KnownSymbol k, Serialize a, StringOrNX xs k)
-     => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~."-}
+get ::  (KnownSymbol k, Serialize a, StringOrNX xs k) =>
+        Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~."-}
 \end{spec}
 where |StringOrNX| is defined in Figure~\ref{fig:xxxOrNX}.
 
@@ -32,8 +32,8 @@ only to make |a| explicit.
 We think it is more reasonable to enforce that, when |get| is called, the key
 should exist in the data store. Thus |get| in \Redis{} has the following type:
 \begin{spec}
-get  :: (KnownSymbol k, Serialize a, Get xs k ~ StringOf a)
-     => Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~,"-}
+get ::  (KnownSymbol k, Serialize a, Get xs k ~ StringOf a) =>
+        Proxy k -> Edis xs xs (EitherReply (Maybe a)) {-"~~,"-}
 \end{spec}
 which requires that |(k,a)| presents in |xs| and thus |a| is inferrable from
 |xs| and |k|.
@@ -59,17 +59,17 @@ leave it as a possible future work. For now, we offer commands that take fixed
 numbers of inputs. The \Edis{} version of |sinter| has type:
 \begin{spec}
 sinter ::  (  KnownSymbol k1, KnownSymbol k2, Serialize a,
-              SetOf x ~ Get xs k1, SetOf x ~ Get xs k2)
-           => Proxy k1 -> Proxy k2 -> Edis xs xs (EitherReply [a]) {-"~~."-}
+              SetOf x ~ Get xs k1, SetOf x ~ Get xs k2) =>
+           Proxy k1 -> Proxy k2 -> Edis xs xs (EitherReply [a]) {-"~~."-}
 \end{spec}
 
 The function |hmset| in \Hedis{} allows one to set the values of many fields
 in a hash, while |hgetall| returns all the field-value pairs of a hash. They
 have the following types:
 \begin{spec}
-Hedis.hmset :: ByteString -> 
+Hedis.hmset :: ByteString ->
    [(ByteString, ByteString)] -> Redis (EitherReply Status)	 {-"~~,"-}
-Hedis.hgetall :: ByteString -> 
+Hedis.hgetall :: ByteString ->
    Redis (EitherReply [(ByteString, ByteString)]) {-"~~."-}
 \end{spec}
 Proper implementations of them in \Edis{} should accept or return a

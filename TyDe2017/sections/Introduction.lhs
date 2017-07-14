@@ -43,15 +43,14 @@ Haskell by |Redis (Either Reply a)|, where the type |Redis| is a monad, while
 program implements the previous example:
 \begin{spec}
 program :: Redis (Either Reply [ByteString])
-program = do
-    sadd "some-set" ["a", "b"]
-    sadd "another-set" ["a", "b", "c"]
-    sinter ["some-set", "another-set"] {-"~~."-}
+program = do  sadd "some-set" ["a", "b"]
+              sadd "another-set" ["a", "b", "c"]
+              sinter ["some-set", "another-set"] {-"~~."-}
 \end{spec}
 The function
 \begin{spec}
-sadd :: ByteString -> [ByteString] ->
-        Redis (Either Reply Integer)
+sadd ::  ByteString -> [ByteString] ->
+           Redis (Either Reply Integer)
 \end{spec}
 takes a key and a list of values as arguments, and returns a
 \Redis{} computation yielding |Integer|. Keys and values, being nothing but
@@ -107,9 +106,8 @@ error, but wrapped in a Haskell constructor: |Left (Error| \texttt{"WRONGTYPE
 Operation against a key holding the wrong kind of value"}|)|.
 \begin{spec}
 program :: Redis (Either Reply Integer)
-program = do
-    set "some-string" "foo"
-    sadd "some-string" ["a"] {-"~~."-}
+program = do  set "some-string" "foo"
+              sadd "some-string" ["a"] {-"~~."-}
 \end{spec}
 
 Such a programming model is certainly very error-prone. Working within Haskell,
