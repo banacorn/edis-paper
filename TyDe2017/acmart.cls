@@ -5,17 +5,17 @@
 %% The original source files were:
 %%
 %% acmart.dtx  (with options: `class')
-%% 
+%%
 %% IMPORTANT NOTICE:
-%% 
+%%
 %% For the copyright see the source file.
-%% 
+%%
 %% Any modified versions of this file must be renamed
 %% with new filenames distinct from acmart.cls.
-%% 
+%%
 %% For distribution of the original source see the terms
 %% for copying and modification in the file acmart.dtx.
-%% 
+%%
 %% This generated file may be distributed as long as the
 %% original source files, as listed above, are part of the
 %% same distribution. (The sources need not necessarily be
@@ -1152,8 +1152,9 @@ Computing Machinery]
   \or % othergov
   ACM\@.
   \or % licensedothergov
-  Copyright held by the owner/author(s). Publication rights licensed to
-  ACM\@.
+  % Copyright held by the owner/author(s). Publication rights licensed to
+  % ACM\@.
+  No Copyright. This work is in the public domain. Please search for free copy.
   \fi}
 \def\@formatdoi#1{\url{http://dx.doi.org/#1}}
 \def\@copyrightpermission{%
@@ -1253,12 +1254,18 @@ Computing Machinery]
    publish or reproduce this article, or to allow others to do so, for
    Government purposes only.
   \or % licensedothergov
-   Publication rights licensed to ACM\@. ACM acknowledges that this
-   contribution was authored or co-authored by an employee, contractor
-   or affiliate of a national government. As such, the Government
-   retains a nonexclusive, royalty-free right to publish or reproduce
-   this article, or to allow others to do so, for Government purposes
-   only.
+  %  Publication rights licensed to ACM\@. ACM acknowledges that this
+  %  contribution was authored or co-authored by an employee, contractor
+  %  or affiliate of a national government. As such, the Government
+  %  retains a nonexclusive, royalty-free right to publish or reproduce
+  %  this article, or to allow others to do so, for Government purposes
+  %  only.
+   To the extent possible under law, the authors have waived all copyright
+   and related or neighboring rights to this paper.  For the avoidance of
+   doubt, this work is released under the CC0 Public Domain Dedication
+   (\url{http://creativecommons.org/publicdomain/zero/1.0/}).
+   Anyone can copy, modify, distribute and perform this work, even for
+   commercial purposes, all without asking permission.
   \fi}
 \def\copyrightyear#1{\def\@copyrightyear{#1}}
 \copyrightyear{\@acmYear}
@@ -1310,7 +1317,9 @@ Computing Machinery]
     \fi
   \fi
   \if@printcopyright
-    \copyright\ \@copyrightyear\ \@copyrightowner\
+    % \copyright\ \@copyrightyear\ \@copyrightowner\
+    \copyright\ \!\!\!\!\!\!\! $\slash$ \quad %\@copyrightyear\
+    \@copyrightowner\
   \else
     \@copyrightyear.\
   \fi
