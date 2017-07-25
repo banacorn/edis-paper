@@ -103,7 +103,7 @@ in the class |Serialize|), and performs the encoding for the user:
 \begin{spec}
 set ::  (KnownSymbol k, Serialize a) => Proxy k -> a ->
           Edis xs (Set xs k (StringOf a)) (Either Reply Status)
-set key val = Edis (Hedis.set (encodeKey key) (encode val)) {-"~~,"-}
+set key v = Edis (Hedis.set (encodeKey key) (encode v)) {-"~~,"-}
 \end{spec}
 For example, executing |set (Proxy :: Proxy "A") True| updates the dictionary
 with an entry |TPar ("A", StringOf Bool)|. If |"A"| is not in the dictionary,
@@ -119,8 +119,8 @@ incr ::  (KnownSymbol k, Get xs k ~ StringOf Integer) =>
          Proxy k -> Edis xs xs (EitherReply Integer)
 incr key = Edis (Hedis.incr (encodeKey key)) {-"~~,"-}
 
-incrbyfloat ::  (KnownSymbol k, Get xs k ~ StringOf Double)
-                => Proxy k -> Double -> Edis xs xs (EitherReply Double)
+incrbyfloat :: (KnownSymbol k, Get xs k ~ StringOf Double)
+          => Proxy k -> Double -> Edis xs xs (EitherReply Double)
 incrbyfloat key eps =
   Edis (Hedis.incrbyfloat (encodeKey key) eps) {-"~~."-}
 \end{spec}
@@ -382,7 +382,7 @@ push msg =  incr kCounter `bind` \i ->
             lpush kQueue (Msg msg (fromRight i)) {-"~~,"-}
 \end{spec}%​
 where |fromRight :: Either a b -> b| extracts the value wrapped by constructor
-|Right|, and the constraint |StringOfIntegerOrNX xs k| holds if either |k|
+|Right|, and the constraint |StringOfIntegerOrNX| |xs k| holds if either |k|
 appears in |xs| and is converted from an |Integer|, or |k| does not
 appear in |xs|. For brevity, the proxies are given names: \\
 % \noindent{\centering %\small
