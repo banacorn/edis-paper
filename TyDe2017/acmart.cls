@@ -440,6 +440,7 @@ Computing Machinery]
 \else
   \hypersetup{hidelinks}
 \fi
+\RequirePackage{cleveref}
 \if@ACM@natbib
   \let\citeN\cite
   \let\cite\citep

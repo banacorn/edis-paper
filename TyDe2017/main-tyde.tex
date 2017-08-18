@@ -1,40 +1,24 @@
 \documentclass[sigplan,10pt]{acmart}
 \settopmatter{printfolios=true}
 
-%\makeatletter\if@ACM@journal\makeatother
-%% Journal information (used by PACMPL format)
-%% Supplied to authors by publisher for camera-ready submission
-% \acmJournal{PACMPL}
-% \acmVolume{1}
-% \acmNumber{1}
-% \acmArticle{1}
-% \acmYear{2017}
-% \copyrightyear{2017}
-% \acmPrice{15.00}
-
 %%% The following is specific to TyDe'17 and the paper
 %%% 'Type Safe Redis Queries: A Case Study of Type-Level Programming in Haskell'
 %%% by Ting-Yan Lai, Tyng-Ruey Chuang, and Shin-Cheng Mu.
 %%%
 \setcopyright{licensedothergov}
+\acmPrice{15.00}
 \acmDOI{10.1145/3122975.3122978}
-\acmISBN{ACM ISBN 978-1-4503-5183-6/17/09}
-\acmConference[TyDe'17]{2nd ACM SIGPLAN International Workshop on Type-Driven Development}{September 3, 2017}{Oxford, UK}
 \acmYear{2017}
 \copyrightyear{2017}
-\acmPrice{15.00}
+\acmISBN{978-1-4503-5183-6/17/09}
+\acmConference[TyDe'17]{2nd ACM SIGPLAN International Workshop on Type-Driven Development}{September 3, 2017}{Oxford, UK}
 
 \bibliographystyle{ACM-Reference-Format}
 
 \usepackage{amsmath}
-%\usepackage{amsfonts}
-%\usepackage{amsthm}
-%\usepackage{color}
 \usepackage{xcolor}
 \usepackage{url}
-%\usepackage{mathptmx}
 \usepackage{doubleequals}
-%\usepackage{makeidx}  % allows for indexgeneration
 \usepackage{textcomp} % for single quote
 \usepackage{fancyvrb} % for indented verbatim
 \usepackage{flushend} % balance columns on last page
@@ -43,16 +27,15 @@
 \input{Preamble}
 \input{macro}
 
-\pagestyle{empty} %no page number
+\pagenumbering{gobble} % no page number
 \setlength{\mathindent}{10pt}
 
 \begin{document}
 
-\title{Type Safe Redis Queries}
-\subtitle{A Case Study of Type--Level Programming in Haskell}
+\title{Type Safe Redis Queries: A Case Study of Type-Level Programming in Haskell}
 
-\author{Ting--Yan Lai}
-\authornote{Ting--Yan Lai was a summer intern from
+\author{Ting-Yan Lai}
+\authornote{Ting-Yan Lai was a summer intern from
 the Inst. of Computer Science and Engineering,
 National Chiao Tung Univ., Taiwan,
 when part of this work was developed.}
@@ -68,7 +51,7 @@ when part of this work was developed.}
 }
 \email{banacorn@gmail.com}          %% \email is recommended
 
-\author{Tyng--Ruey Chuang}
+\author{Tyng-Ruey Chuang}
 \affiliation{
 %  \position{Associate Research Fellow}
   \department{Institute of Information Science}
@@ -80,7 +63,7 @@ when part of this work was developed.}
 }
 \email{trc@iis.sinica.edu.tw}
 
-\author{Shin--Cheng Mu}
+\author{Shin-Cheng Mu}
 \affiliation{
 %  \position{Associate Research Fellow}
   \department{Institute of Information Science}
