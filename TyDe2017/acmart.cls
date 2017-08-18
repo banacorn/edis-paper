@@ -5,17 +5,17 @@
 %% The original source files were:
 %%
 %% acmart.dtx  (with options: `class')
-%% 
+%%
 %% IMPORTANT NOTICE:
-%% 
+%%
 %% For the copyright see the source file.
-%% 
+%%
 %% Any modified versions of this file must be renamed
 %% with new filenames distinct from acmart.cls.
-%% 
+%%
 %% For distribution of the original source see the terms
 %% for copying and modification in the file acmart.dtx.
-%% 
+%%
 %% This generated file may be distributed as long as the
 %% original source files, as listed above, are part of the
 %% same distribution. (The sources need not necessarily be
@@ -1361,8 +1361,12 @@ Computing Machinery]
   \or % othergov
   Association for Computing Machinery.
   \or % licensedothergov
-  Copyright held by the owner/author(s). Publication rights licensed to
-  Association for Computing Machinery.
+  No Copyright. This work is in the public domain. For avoidance of
+doubt, this work is released under the CC0 Public Domain Dedication
+(\url{http://creativecommons.org/publicdomain/zero/1.0/}). Please search
+for free copy.
+  % Copyright held by the owner/author(s). Publication rights licensed to
+  % Association for Computing Machinery.
   \fi}
 \def\@formatdoi#1{\url{https://doi.org/#1}}
 \def\@copyrightpermission{%
@@ -1535,7 +1539,9 @@ Computing Machinery]
        \fi
     \fi
     \if@printcopyright
-      \copyright\ \@copyrightyear\ \@copyrightowner\\
+    % \copyright\ \@copyrightyear\ \@copyrightowner\
+    \copyright\ \!\!\!\!\!\!\! $\slash$ \quad %\@copyrightyear\
+    \@copyrightowner\
     \else
      \@copyrightyear.\
     \fi
