@@ -1362,12 +1362,12 @@ Computing Machinery]
   \or % othergov
   Association for Computing Machinery.
   \or % licensedothergov
-  No Copyright. This work is in the public domain. For avoidance of
-doubt, this work is released under the CC0 Public Domain Dedication
-(\url{http://creativecommons.org/publicdomain/zero/1.0/}). Please search
-for free copy.
-  % Copyright held by the owner/author(s). Publication rights licensed to
-  % Association for Computing Machinery.
+%   No Copyright. This work is in the public domain. For avoidance of
+% doubt, this work is released under the CC0 Public Domain Dedication
+% (\url{http://creativecommons.org/publicdomain/zero/1.0/}). Please search
+% for free copy.
+  Copyright held by the owner/author(s). Publication rights licensed to
+  Association for Computing Machinery.
   \fi}
 \def\@formatdoi#1{\url{https://doi.org/#1}}
 \def\@copyrightpermission{%
@@ -1540,9 +1540,9 @@ for free copy.
        \fi
     \fi
     \if@printcopyright
-    % \copyright\ \@copyrightyear\ \@copyrightowner\
-    \copyright\ \!\!\!\!\!\!\! $\slash$ \quad %\@copyrightyear\
-    \@copyrightowner\
+    %\copyright\ \@copyrightyear\ \@copyrightowner\
+     \copyright\ \!\!\!\!\!\!\!\! $\slash$ ~~~ %\@copyrightyear\
+     \@copyrightowner\
     \else
      \@copyrightyear.\
     \fi
